@@ -1,0 +1,233 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* Light Yellow Theme - Warm, comfortable for extended reading */
+    --background: 48 100% 96%;
+    --foreground: 222 47% 11%;
+    --card: 48 100% 98%;
+    --card-foreground: 222 47% 11%;
+    --popover: 48 100% 98%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 215 60% 40%;
+    --primary-foreground: 48 100% 98%;
+    --secondary: 48 50% 88%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 48 30% 90%;
+    --muted-foreground: 222 25% 45%;
+    --accent: 38 90% 60%;
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 48 100% 98%;
+    --border: 48 30% 82%;
+    --input: 48 30% 85%;
+    --ring: 215 60% 40%;
+    --radius: 0.5rem;
+    
+    /* Reader-specific tokens */
+    --reader-bg: 48 100% 96%;
+    --reader-text: 222 47% 11%;
+    --group-a: 200 70% 88%;
+    --group-b: 270 50% 88%;
+  }
+
+  [data-theme="light-blue"] {
+    --background: 205 100% 96%;
+    --foreground: 222 47% 11%;
+    --card: 205 100% 98%;
+    --card-foreground: 222 47% 11%;
+    --popover: 205 100% 98%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 215 60% 40%;
+    --primary-foreground: 205 100% 98%;
+    --secondary: 205 50% 88%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 205 30% 90%;
+    --muted-foreground: 222 25% 45%;
+    --accent: 195 90% 50%;
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 205 100% 98%;
+    --border: 205 30% 82%;
+    --input: 205 30% 85%;
+    --ring: 215 60% 40%;
+    
+    --reader-bg: 205 100% 96%;
+    --reader-text: 222 47% 11%;
+    --group-a: 200 70% 88%;
+    --group-b: 270 50% 88%;
+  }
+
+  [data-theme="sepia"] {
+    --background: 35 40% 92%;
+    --foreground: 25 30% 20%;
+    --card: 35 40% 95%;
+    --card-foreground: 25 30% 20%;
+    --popover: 35 40% 95%;
+    --popover-foreground: 25 30% 20%;
+    --primary: 25 50% 35%;
+    --primary-foreground: 35 40% 95%;
+    --secondary: 35 25% 82%;
+    --secondary-foreground: 25 30% 20%;
+    --muted: 35 20% 85%;
+    --muted-foreground: 25 20% 40%;
+    --accent: 35 60% 55%;
+    --accent-foreground: 25 30% 20%;
+    --destructive: 0 60% 45%;
+    --destructive-foreground: 35 40% 95%;
+    --border: 35 20% 75%;
+    --input: 35 20% 78%;
+    --ring: 25 50% 35%;
+    
+    --reader-bg: 35 40% 92%;
+    --reader-text: 25 30% 20%;
+    --group-a: 35 35% 80%;
+    --group-b: 25 35% 75%;
+  }
+
+  [data-theme="dark"] {
+    --background: 222 47% 8%;
+    --foreground: 210 40% 95%;
+    --card: 222 47% 10%;
+    --card-foreground: 210 40% 95%;
+    --popover: 222 47% 10%;
+    --popover-foreground: 210 40% 95%;
+    --primary: 210 70% 60%;
+    --primary-foreground: 222 47% 8%;
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 95%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 200 70% 50%;
+    --accent-foreground: 210 40% 95%;
+    --destructive: 0 63% 50%;
+    --destructive-foreground: 210 40% 95%;
+    --border: 217 33% 20%;
+    --input: 217 33% 20%;
+    --ring: 210 70% 60%;
+    
+    --reader-bg: 222 47% 8%;
+    --reader-text: 210 40% 95%;
+    --group-a: 220 30% 20%;
+    --group-b: 260 30% 22%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "liga" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Font configurations for dyslexia-friendly reading */
+  .font-lexend {
+    font-family: 'Lexend', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+
+  .font-comic-neue {
+    font-family: 'Comic Neue', 'Comic Sans MS', cursive, sans-serif;
+  }
+
+  .font-atkinson {
+    font-family: 'Atkinson Hyperlegible', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+
+  .font-arial {
+    font-family: Arial, Helvetica, sans-serif;
+  }
+
+  .font-verdana {
+    font-family: Verdana, Geneva, sans-serif;
+  }
+
+  .font-system {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+
+  /* Reader container styles */
+  .reader {
+    max-width: 65ch;
+    margin: 0 auto;
+    padding: 2rem;
+    background: hsl(var(--reader-bg));
+    color: hsl(var(--reader-text));
+    border-radius: var(--radius);
+    word-spacing: 0.08em;
+    transition: all 0.3s ease;
+  }
+
+  .reader p {
+    margin-bottom: 1.5em;
+  }
+
+  .reader .word {
+    display: inline-block;
+    transition: background-color 0.2s ease;
+  }
+
+  .reader .word.group-a {
+    background-color: hsl(var(--group-a));
+    padding: 0.1em 0.2em;
+    border-radius: 0.2em;
+  }
+
+  .reader .word.group-b {
+    background-color: hsl(var(--group-b));
+    padding: 0.1em 0.2em;
+    border-radius: 0.2em;
+  }
+
+  .reader strong {
+    font-weight: 700;
+    color: hsl(var(--reader-text));
+  }
+
+  /* Focus visible styles for accessibility */
+  *:focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+
+  /* Smooth transitions for theme changes */
+  html {
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  /* High contrast focus for controls */
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px hsl(var(--ring) / 0.1);
+  }
+
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
