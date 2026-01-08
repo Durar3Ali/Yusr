@@ -1,5 +1,6 @@
 import { Token, RenderOptions, LeadBoldStrength, LanguageHint } from '@/types';
 import { isArabicWord } from './rtl';
+import { directionFor } from './rtl';
 
 /**
  * Normalizes text by trimming, collapsing excess spaces, and normalizing newlines
@@ -150,59 +151,92 @@ export function leadBoldToken(
  */
 export function renderHtml(tokens: Token[], opts: RenderOptions): string {
   const { groupSize, lang, leadBold } = opts;
-  
+
   let html = '';
   let wordIndex = 0;
   let inParagraph = false;
-  
+
+  // run wrapper
+  let runOpen = false;
+  let runDir: 'rtl' | 'ltr' | null = null;
+
+  const closeRun = () => {
+    if (runOpen) {
+      html += '</span>';
+      runOpen = false;
+      runDir = null;
+    }
+  };
+
+  const openRun = (dir: 'rtl' | 'ltr') => {
+    if (!runOpen || runDir !== dir) {
+      closeRun();
+      html += `<span class="dir-run" dir="${dir}">`;
+      runOpen = true;
+      runDir = dir;
+    }
+  };
+
+  const paragraphDirFrom = (startIndex: number): 'rtl' | 'ltr' => {
+    if (lang === 'ar') return 'rtl';
+    if (lang === 'en') return 'ltr';
+
+    // auto: base direction = first word in paragraph
+    for (let j = startIndex; j < tokens.length; j++) {
+      const t = tokens[j];
+      if (t.type === 'newline') break;
+      if (t.type === 'word') return isArabicWord(t.value) ? 'rtl' : 'ltr';
+    }
+    return 'ltr';
+  };
+
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i];
-    
+
     if (token.type === 'newline') {
-      // Close paragraph if open
+      closeRun();
       if (inParagraph) {
         html += '</p>';
         inParagraph = false;
       }
-      
-      // Double newline creates paragraph break
-      if (token.value === '\n\n') {
-        // Next word will start a new paragraph
-      } else {
-        // Single newline - just a line break within paragraph
-        // We'll treat it as continuing the same paragraph
-      }
       continue;
     }
-    
+
     if (token.type === 'space') {
       html += ' ';
       continue;
     }
-    
+
     if (token.type === 'word') {
-      // Open paragraph if needed
       if (!inParagraph) {
-        html += '<p>';
+        const pDir = paragraphDirFrom(i);
+        html += `<p dir="${pDir}">`;
         inParagraph = true;
       }
-      
-      // Determine group class
+
+      const wordDir = wordDirection(token.value, lang);
+      openRun(wordDir);
+
       const groupNum = Math.floor(wordIndex / groupSize);
       const groupClass = groupNum % 2 === 0 ? 'group-a' : 'group-b';
-      
-      // Apply lead-bold
+
       const formattedWord = leadBoldToken(token.value, leadBold, lang);
-      
-      html += `<span class="word ${groupClass}" data-idx="${wordIndex}">${formattedWord}</span>`;
+      const wordHtml = `<bdi dir="${wordDir}" class="word-content">${formattedWord}</bdi>`;
+
+      html += `<span class="word ${groupClass}" data-idx="${wordIndex}">${wordHtml}</span>`;
       wordIndex++;
     }
   }
-  
-  // Close final paragraph if open
-  if (inParagraph) {
-    html += '</p>';
-  }
-  
+
+  closeRun();
+  if (inParagraph) html += '</p>';
   return html;
+}
+function wordDirection(word: string, lang: LanguageHint): 'rtl' | 'ltr' {
+  if (!word) return 'ltr';
+
+  if (lang === 'ar') return 'rtl';
+  if (lang === 'en') return 'ltr';
+
+  return isArabicWord(word) ? 'rtl' : 'ltr';
 }

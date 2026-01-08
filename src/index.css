@@ -170,11 +170,34 @@ All colors MUST be HSL.
 
   .reader p {
     margin-bottom: 1.5em;
+    unicode-bidi: isolate;
   }
 
+  .reader p {
+    margin-bottom: 1.5em;
+    unicode-bidi: isolate;
+  }
+  
+  .reader p[dir="rtl"] {
+    text-align: right;
+  }
+  
+  .reader p {
+    margin-bottom: 1.5em;
+    unicode-bidi: isolate;
+  }
+  
   .reader .word {
     display: inline-block;
     transition: background-color 0.2s ease;
+    unicode-bidi: isolate;
+  }
+  
+  .reader .word-content {
+    unicode-bidi: isolate;
+  }
+  .reader .dir-run {
+    unicode-bidi: isolate;
   }
 
   .reader .word.group-a {

@@ -1,10 +1,10 @@
 import { useMemo } from 'react';
 import { usePreferences } from '@/context/PreferencesContext';
 import { normalize, tokenize, renderHtml } from '@/lib/textPipeline';
-import { directionFor } from '@/lib/rtl';
 import { FontFamily } from '@/types';
 import { EmptyState } from '@/components/EmptyState';
 import { copy } from '@/lib/copy';
+import { directionFor } from '@/lib/rtl';
 
 interface ReaderProps {
   originalText: string;
@@ -14,9 +14,13 @@ interface ReaderProps {
 export function Reader({ originalText, onTextChange }: ReaderProps) {
   const { preferences } = usePreferences();
 
-  const { html, direction } = useMemo(() => {
+  const dir = useMemo(() => {
+    return directionFor(originalText, preferences.langHint);
+  }, [originalText, preferences.langHint]);
+
+  const html = useMemo(() => {
     if (!originalText.trim()) {
-      return { html: '', direction: 'ltr' as const };
+      return '';
     }
 
     const normalized = normalize(originalText);
@@ -26,9 +30,8 @@ export function Reader({ originalText, onTextChange }: ReaderProps) {
       lang: preferences.langHint,
       leadBold: preferences.leadBold,
     });
-    const dir = directionFor(normalized, preferences.langHint);
 
-    return { html: rendered, direction: dir };
+    return rendered;
   }, [originalText, preferences.groupSize, preferences.langHint, preferences.leadBold]);
 
   const handleLoadSample = () => {
@@ -45,17 +48,15 @@ export function Reader({ originalText, onTextChange }: ReaderProps) {
     fontSize: `${preferences.fontSize}px`,
     lineHeight: preferences.lineSpacing,
     letterSpacing: `${preferences.letterSpacing}em`,
-    direction,
   } as const;
 
-  // Map font family to CSS class
   const fontClassMap: Record<FontFamily, string> = {
-    'Lexend': 'font-lexend',
+    Lexend: 'font-lexend',
     'Comic Neue': 'font-comic-neue',
     'Atkinson Hyperlegible': 'font-atkinson',
-    'Arial': 'font-arial',
-    'Verdana': 'font-verdana',
-    'System': 'font-system',
+    Arial: 'font-arial',
+    Verdana: 'font-verdana',
+    System: 'font-system',
   };
   const fontClass = fontClassMap[preferences.fontFamily];
 
@@ -64,7 +65,7 @@ export function Reader({ originalText, onTextChange }: ReaderProps) {
       <div
         className={`reader ${fontClass}`}
         style={readerStyle}
-        dir={direction}
+        dir={dir}
         dangerouslySetInnerHTML={{ __html: html }}
         aria-live="polite"
         aria-label="Formatted reading text"
