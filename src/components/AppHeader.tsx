@@ -67,16 +67,16 @@ export function AppHeader({ variant = 'app' }: AppHeaderProps) {
             </Button>
           ) : variant === 'landing' ? (
             <>
-              <Button variant="ghost" asChild size="sm">
-                <Link to="/auth/login">Log in</Link>
+              <Button variant="ghost" size="sm" onClick={() => navigate('/auth/login')}>
+                Log in
               </Button>
-              <Button asChild size="sm">
-                <Link to="/read">Try as Guest</Link>
+              <Button size="sm" onClick={() => navigate('/read')}>
+                Try as Guest
               </Button>
             </>
           ) : (
-            <Button variant="outline" asChild size="sm">
-              <Link to="/auth/login">Log in</Link>
+            <Button variant="outline" size="sm" onClick={() => navigate('/auth/login')}>
+              Log in
             </Button>
           )}
         </div>

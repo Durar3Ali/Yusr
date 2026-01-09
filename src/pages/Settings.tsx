@@ -20,7 +20,7 @@ import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { FontFamily, LeadBoldStrength, LanguageHint, Theme } from '@/types';
 import { getPreferences, upsertPreferences } from '@/lib/api/preferences';
-import { supabase } from '@/lib/supabaseClient';
+import { updateMe } from '@/lib/api/users';
 
 export default function Settings() {
   const { preferences, setPreferences, resetPreferences } = usePreferences();
@@ -91,21 +91,45 @@ export default function Settings() {
     }
 
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .upsert({ user_id: me.id, full_name: fullName });
-      
-      if (error) throw error;
+      setLoadingProfile(true);
+      await updateMe({ full_name: fullName });
       toast.success('Profile saved successfully');
     } catch (err) {
       console.error('Failed to save profile:', err);
       toast.error('Failed to save profile. Please try again.');
+    } finally {
+      setLoadingProfile(false);
     }
   };
 
   const handleResetPreferences = () => {
     resetPreferences();
     toast.success('Preferences reset to defaults');
+  };
+
+  const handleSaveReadingPreferences = async () => {
+    if (!me) {
+      toast.error('You must log in to save your reading preferences');
+      return;
+    }
+
+    try {
+      await upsertPreferences({
+        user_id: me.id,
+        theme: preferences.theme,
+        font_family: preferences.fontFamily,
+        font_size: preferences.fontSize,
+        line_spacing: preferences.lineSpacing,
+        letter_spacing: preferences.letterSpacing,
+        lead_bold: preferences.leadBold,
+        group_size: preferences.groupSize,
+        lang_hint: preferences.langHint,
+      });
+      toast.success('Reading preferences saved successfully');
+    } catch (err) {
+      console.error('Failed to save reading preferences:', err);
+      toast.error('Failed to save reading preferences. Please try again.');
+    }
   };
 
   return (
@@ -168,10 +192,10 @@ export default function Settings() {
 
           <Separator />
 
-          {/* Default Reading Preferences */}
+          {/* Reading Preferences */}
           <Card className="shadow-sm">
             <CardHeader>
-              <CardTitle>Default Reading Preferences</CardTitle>
+              <CardTitle>Reading Preferences</CardTitle>
               <CardDescription>
                 These settings will be applied by default when you start reading. Changes are saved automatically.
               </CardDescription>
@@ -355,6 +379,9 @@ export default function Settings() {
               <div className="flex gap-3 pt-4">
                 <Button variant="outline" onClick={handleResetPreferences}>
                   Reset to Defaults
+                </Button>
+                <Button onClick={handleSaveReadingPreferences} disabled={!authUser}>
+                  Save Reading Preferences
                 </Button>
               </div>
             </CardContent>
