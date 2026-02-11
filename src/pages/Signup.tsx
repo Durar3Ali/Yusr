@@ -26,6 +26,30 @@ export default function Signup() {
     }
   }, [user, navigate]);
 
+  const validatePassword = (password: string): { isValid: boolean; message: string } => {
+    if (password.length < 6) {
+      return { isValid: false, message: 'Password must be at least 6 characters' };
+    }
+
+    const hasLetter = /[a-zA-Z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+
+    if (!hasLetter) {
+      return { isValid: false, message: 'Password must contain at least one letter' };
+    }
+
+    if (!hasNumber) {
+      return { isValid: false, message: 'Password must contain at least one number' };
+    }
+
+    if (!hasSpecialChar) {
+      return { isValid: false, message: 'Password must contain at least one special character' };
+    }
+
+    return { isValid: true, message: 'Password is valid' };
+  };
+
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -34,8 +58,9 @@ export default function Signup() {
       return;
     }
 
-    if (password.length < 6) {
-      toast.error('Password must be at least 6 characters');
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.isValid) {
+      toast.error(passwordValidation.message);
       return;
     }
 
@@ -117,6 +142,9 @@ export default function Signup() {
                   required
                   minLength={6}
                 />
+                <p className="text-xs text-muted-foreground">
+                  Must be at least 6 characters with letters, numbers, and special characters
+                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="confirm-password">Confirm Password</Label>

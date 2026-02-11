@@ -8,16 +8,23 @@ export function useMe() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let isInitialized = false;
+    
     let sub = supabase.auth.onAuthStateChange(async (_e, session) => {
-      const u = session?.user ?? null;
-      setAuthUser(u);
-      if (u) setMe(await getMe());
-      else setMe(null);
+      // Only update auth state after initial check completes
+      if (isInitialized) {
+        const u = session?.user ?? null;
+        setAuthUser(u);
+        if (u) setMe(await getMe());
+        else setMe(null);
+      }
     });
+    
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setAuthUser(user);
       if (user) setMe(await getMe());
+      isInitialized = true;
       setLoading(false);
     })();
     return () => sub.data.subscription.unsubscribe();

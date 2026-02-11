@@ -15,7 +15,7 @@ export function AppHeader({ variant = 'app' }: AppHeaderProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut } = useAuth();
-  const { authUser } = useMe();
+  const { authUser, loading } = useMe();
 
   const handleLogout = async () => {
     try {
@@ -60,12 +60,12 @@ export function AppHeader({ variant = 'app' }: AppHeaderProps) {
         
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          {authUser ? (
+          {!loading && authUser ? (
             <Button variant="outline" size="sm" onClick={handleLogout}>
               <LogOut className="h-4 w-4 mr-2" />
               Log out
             </Button>
-          ) : variant === 'landing' ? (
+          ) : !loading && variant === 'landing' ? (
             <>
               <Button variant="ghost" size="sm" onClick={() => navigate('/auth/login')}>
                 Log in
@@ -74,11 +74,11 @@ export function AppHeader({ variant = 'app' }: AppHeaderProps) {
                 Try as Guest
               </Button>
             </>
-          ) : (
+          ) : !loading ? (
             <Button variant="outline" size="sm" onClick={() => navigate('/auth/login')}>
               Log in
             </Button>
-          )}
+          ) : null}
         </div>
       </div>
     </header>
