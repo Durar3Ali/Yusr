@@ -1,10 +1,10 @@
-# Yusr - Reading Support for Dyslexia
+﻿# Yusr - Reading Support for Dyslexia
 
 A professional, accessible web application designed to help dyslexic readers with customizable text formatting, lead-bold highlighting, word grouping, and text-to-speech capabilities.
 
-## ✨ Features
+## Features
 
-### 🎨 Reading Experience
+### Reading Experience
 - **Multiple Font Options**: Choose from Lexend, Comic Neue, Atkinson Hyperlegible, Arial, Verdana, or System fonts
 - **Customizable Typography**: Adjust font size (14-28px), line spacing (1.2-2.5), and letter spacing (0-0.15em)
 - **Color Themes**: Four accessible themes - Light Yellow, Light Blue, Sepia, and Dark mode
@@ -12,28 +12,28 @@ A professional, accessible web application designed to help dyslexic readers wit
 - **Word Grouping**: Alternating color highlights for groups of 2-7 words to help track lines
 - **RTL/LTR Support**: Automatic text direction detection for Arabic and English content
 
-### 📄 Text Input
+### Text Input
 - **Direct Paste**: Copy and paste text directly into the editor
 - **PDF Upload**: Extract text from PDF files right in your browser (privacy-first, no server upload)
 - **Sample Text**: Try the app instantly with built-in bilingual sample content
 
-### 🔊 Text-to-Speech
+### Text-to-Speech
 - **Read Aloud**: Built-in TTS with play, pause, and stop controls
 - **Adjustable Speed**: Speech rate from 0.5x to 2.0x
 - **Language Support**: Auto-detect or manually select Arabic or English
 
-### 💾 Preferences
+### Preferences
 - **Persistent Settings**: All preferences saved automatically to browser localStorage
 - **Default Preferences**: Set your preferred defaults in Settings
 - **Guest Mode**: Full functionality without requiring an account
 
-### 🎯 User Experience
+### User Experience
 - **Landing Page**: Clear product introduction with features, how-it-works, and CTAs
 - **Onboarding Tips**: First-time user guide (dismissible, stored in localStorage)
 - **Empty States**: Helpful prompts when no text is loaded, with quick sample text button
 - **Responsive Design**: Optimized for desktop, tablet, and mobile devices
 
-## 🛠 Tech Stack
+## Tech Stack
 
 - **Framework**: React 18 with Vite
 - **Language**: TypeScript
@@ -44,44 +44,44 @@ A professional, accessible web application designed to help dyslexic readers wit
 - **State Management**: React Context API with localStorage persistence
 - **Accessibility**: WCAG-compliant with ARIA labels, semantic HTML, keyboard navigation
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 src/
-├── components/
-│   ├── AppHeader.tsx        # Main navigation header
-│   ├── AppFooter.tsx        # Footer with links
-│   ├── FeatureCard.tsx      # Landing page feature cards
-│   ├── CTAButtons.tsx       # Call-to-action button groups
-│   ├── EmptyState.tsx       # Reader empty state with sample text
-│   ├── OnboardingTips.tsx   # First-time user onboarding
-│   ├── Reader.tsx           # Main text display with formatting
-│   ├── TextUploader.tsx     # Text input and PDF upload
-│   ├── ThemeToggle.tsx      # Theme switcher component
-│   ├── Toolbar.tsx          # Reading controls sidebar
-│   └── ui/                  # shadcn/ui components
-├── context/
-│   └── PreferencesContext.tsx  # User preferences state management
-├── lib/
-│   ├── copy.ts              # Product copy and content strings
-│   ├── pdf.ts               # PDF text extraction with pdfjs-dist
-│   ├── rtl.ts               # RTL/LTR language detection
-│   ├── textPipeline.ts      # Text processing: normalize, tokenize, render
-│   └── utils.ts             # Utility functions
-├── pages/
-│   ├── Landing.tsx          # Landing page (/)
-│   ├── Read.tsx             # Main reading app (/read)
-│   ├── Settings.tsx         # Settings and preferences (/settings)
-│   ├── Login.tsx            # Login page stub (/auth/login)
-│   ├── Signup.tsx           # Signup page stub (/auth/signup)
-│   └── NotFound.tsx         # 404 page
-├── types/
-│   └── index.ts             # TypeScript type definitions
-├── index.css                # Global styles and design tokens
-└── main.tsx                 # App entry point
+ components/
+    AppHeader.tsx # Main navigation header
+    AppFooter.tsx # Footer with links
+    FeatureCard.tsx # Landing page feature cards
+    CTAButtons.tsx # Call-to-action button groups
+    EmptyState.tsx # Reader empty state with sample text
+    OnboardingTips.tsx # First-time user onboarding
+    Reader.tsx # Main text display with formatting
+    TextUploader.tsx # Text input and PDF upload
+    ThemeToggle.tsx # Theme switcher component
+    Toolbar.tsx # Reading controls sidebar
+    ui/ # shadcn/ui components
+ context/
+    PreferencesContext.tsx # User preferences state management
+ lib/
+    copy.ts # Product copy and content strings
+    pdf.ts # PDF text extraction with pdfjs-dist
+    rtl.ts # RTL/LTR language detection
+    textPipeline.ts # Text processing: normalize, tokenize, render
+    utils.ts # Utility functions
+ pages/
+    Landing.tsx # Landing page (/)
+    Read.tsx # Main reading app (/read)
+    Settings.tsx # Settings and preferences (/settings)
+    Login.tsx # Login page stub (/auth/login)
+    Signup.tsx # Signup page stub (/auth/signup)
+    NotFound.tsx # 404 page
+ types/
+    index.ts # TypeScript type definitions
+ index.css # Global styles and design tokens
+ main.tsx # App entry point
 ```
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
@@ -131,13 +131,13 @@ To enable authentication, user settings sync, document storage, and admin featur
 ### Available Scripts
 
 ```bash
-npm run dev      # Start development server
-npm run build    # Build for production
-npm run preview  # Preview production build
-npm run lint     # Run ESLint
+npm run dev # Start development server
+npm run build # Build for production
+npm run preview # Preview production build
+npm run lint # Run ESLint
 ```
 
-## 🎨 Design System
+## Design System
 
 Yusr uses a comprehensive design system with CSS custom properties for theming:
 
@@ -158,28 +158,28 @@ npm run start
 
 ```
 src/
-├── components/          # React components
-│   ├── Layout.tsx       # App layout with navigation
-│   ├── Reader.tsx       # Main reading display
-│   ├── TextUploader.tsx # Text/PDF input
-│   ├── Toolbar.tsx      # Reading controls
-│   └── ThemeToggle.tsx  # Theme switcher
-├── context/
-│   └── PreferencesContext.tsx  # Settings state management
-├── lib/
-│   ├── pdf.ts           # PDF text extraction
-│   ├── textPipeline.ts  # Text processing (normalize, tokenize, render)
-│   └── rtl.ts           # RTL/LTR detection
-├── pages/               # Route pages
-│   ├── Index.tsx        # Redirect to /read
-│   ├── Read.tsx         # Main reading page
-│   ├── Settings.tsx     # User preferences
-│   ├── Login.tsx        # Auth stub (UI only)
-│   └── Signup.tsx       # Auth stub (UI only)
-├── types/
-│   └── index.ts         # TypeScript type definitions
-├── App.tsx              # Root component with routing
-└── index.css            # Global styles + theme tokens
+ components/ # React components
+    Layout.tsx # App layout with navigation
+    Reader.tsx # Main reading display
+    TextUploader.tsx # Text/PDF input
+    Toolbar.tsx # Reading controls
+    ThemeToggle.tsx # Theme switcher
+ context/
+    PreferencesContext.tsx # Settings state management
+ lib/
+    pdf.ts # PDF text extraction
+    textPipeline.ts # Text processing (normalize, tokenize, render)
+    rtl.ts # RTL/LTR detection
+ pages/ # Route pages
+    Index.tsx # Redirect to /read
+    Read.tsx # Main reading page
+    Settings.tsx # User preferences
+    Login.tsx # Auth stub (UI only)
+    Signup.tsx # Auth stub (UI only)
+ types/
+    index.ts # TypeScript type definitions
+ App.tsx # Root component with routing
+ index.css # Global styles + theme tokens
 ```
 
 ## Key Features Explained
@@ -260,10 +260,10 @@ Built with React, Vite, Tailwind CSS, and shadcn/ui components.
 - Web Speech API availability and quality vary by browser and OS
 - All text processing happens client-side for privacy and performance
 
-## 📄 License
+## License
 
 This project is open source and available under the MIT License.
 
 ---
 
-**Built with ❤️ for dyslexic readers**
+**Built with love for dyslexic readers**

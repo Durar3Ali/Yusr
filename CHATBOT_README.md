@@ -6,12 +6,12 @@ The Yusr app now includes an AI-powered chatbot that uses **Ephemeral RAG (Retri
 
 ## Features
 
-✅ **Ephemeral RAG** - Documents become temporary knowledge bases  
-✅ **PDF & Text Support** - Works with both plain text and PDF files  
-✅ **Voice Input (STT)** - OpenAI Whisper API with browser fallback  
-✅ **Voice Output (TTS)** - Browser Web Speech API for reading responses  
-✅ **Auto-sync** - Automatically uses text from the Reader page  
-✅ **Modern UI** - Clean chat interface with message history  
+**Ephemeral RAG** - Documents become temporary knowledge bases
+**PDF & Text Support** - Works with both plain text and PDF files
+**Voice Input (STT)** - OpenAI Whisper API with browser fallback
+**Voice Output (TTS)** - Browser Web Speech API for reading responses
+**Auto-sync** - Automatically uses text from the Reader page
+**Modern UI** - Clean chat interface with message history
 
 ## Architecture
 
@@ -92,12 +92,12 @@ assistant = client.beta.assistants.create(
 ```
 
 No need for:
-- ❌ ChromaDB or Pinecone
-- ❌ Manual chunking
-- ❌ Embedding generation
-- ❌ Vector storage management
+- ChromaDB or Pinecone
+- Manual chunking
+- Embedding generation
+- Vector storage management
 
-OpenAI does it all! 🎉
+OpenAI does it all!
 
 ## API Endpoints
 
@@ -152,28 +152,28 @@ deleteAssistant(assistantId, vectorStoreId, fileId)
 ### Backend (Python)
 ```
 backend/
-├── app.py                      # Flask API server
-├── requirements.txt            # Python dependencies
-├── .env                        # Environment variables (API keys)
-├── services/
-│   └── openai_service.py      # OpenAI Assistants logic
-└── README.md                   # Backend documentation
+ app.py # Flask API server
+ requirements.txt # Python dependencies
+ .env # Environment variables (API keys)
+ services/
+    openai_service.py # OpenAI Assistants logic
+ README.md # Backend documentation
 ```
 
 ### Frontend (React)
 ```
 src/
-├── pages/
-│   ├── Read.tsx               # Document upload page
-│   └── Chat.tsx               # Chatbot page
-├── components/
-│   ├── ChatBot.tsx            # Main chatbot component
-│   └── TextUploader.tsx       # Updated with PDF context storage
-├── context/
-│   └── TextContext.tsx        # Shared document state
-├── lib/api/
-│   └── chat.ts                # Chat API client
-└── App.tsx                    # Updated with TextProvider & /chat route
+ pages/
+    Read.tsx # Document upload page
+    Chat.tsx # Chatbot page
+ components/
+    ChatBot.tsx # Main chatbot component
+    TextUploader.tsx # Updated with PDF context storage
+ context/
+    TextContext.tsx # Shared document state
+ lib/api/
+    chat.ts # Chat API client
+ App.tsx # Updated with TextProvider & /chat route
 ```
 
 ## Environment Variables
@@ -265,11 +265,11 @@ Potential improvements for the chatbot:
 
 ## Security Notes
 
-- ⚠️ **Never commit `.env` files** to version control
-- ✅ `.env` is already in `.gitignore`
-- ✅ API keys stored securely on backend only
-- ✅ CORS configured for specific origins
-- ✅ File size limits enforced (50MB max)
+- **Never commit `.env` files** to version control
+- `.env` is already in `.gitignore`
+- API keys stored securely on backend only
+- CORS configured for specific origins
+- File size limits enforced (50MB max)
 
 ## Support
 
@@ -281,4 +281,4 @@ For issues or questions:
 
 ---
 
-**Built with ❤️ for the Yusr reading app**
+**Built with love for the Yusr reading app**

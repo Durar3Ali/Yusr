@@ -32,7 +32,6 @@ export function ChatBot() {
   const [isRecording, setIsRecording] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
-  const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
   const [activeMode, setActiveMode] = useState<'summarize' | 'explain' | null>(null);
   
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -172,27 +171,39 @@ export function ChatBot() {
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
-      
+
+      // Pick the best supported MIME type in priority order
+      const preferredTypes = [
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/ogg;codecs=opus',
+        'audio/ogg',
+        'audio/mp4',
+      ];
+      const mimeType = preferredTypes.find((t) => MediaRecorder.isTypeSupported(t)) ?? '';
+
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+
       const chunks: Blob[] = [];
-      
+
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) {
           chunks.push(e.data);
         }
       };
-      
+
       recorder.onstop = async () => {
-        const audioBlob = new Blob(chunks, { type: 'audio/webm' });
-        await transcribeWithWhisper(audioBlob);
-        
-        // Stop all tracks
-        stream.getTracks().forEach(track => track.stop());
+        const audioBlob = new Blob(chunks, { type: mimeType || 'audio/webm' });
+        // Build a short prompt from the first ~200 chars of the document to help Whisper
+        const docPrompt = originalText ? originalText.slice(0, 200).trim() : undefined;
+        await transcribeWithWhisper(audioBlob, mimeType || undefined, docPrompt);
+
+        // Release microphone
+        stream.getTracks().forEach((track) => track.stop());
       };
-      
+
       recorder.start();
       setMediaRecorder(recorder);
-      setAudioChunks(chunks);
       setIsRecording(true);
       toast.info('Recording... Click again to stop');
     } catch (error) {
@@ -210,9 +221,9 @@ export function ChatBot() {
   };
 
   // Transcribe with OpenAI Whisper (with browser fallback)
-  const transcribeWithWhisper = async (audioBlob: Blob) => {
+  const transcribeWithWhisper = async (audioBlob: Blob, mimeType?: string, prompt?: string) => {
     try {
-      const response = await transcribeAudio(audioBlob);
+      const response = await transcribeAudio(audioBlob, { mimeType, prompt });
       setInputText(response.text);
       toast.success('Audio transcribed!');
     } catch (error) {
