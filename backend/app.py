@@ -176,10 +176,13 @@ def delete_assistant_endpoint(assistant_id):
 @app.route('/api/transcribe', methods=['POST'])
 def transcribe():
     """
-    Transcribe audio using OpenAI Whisper API.
+    Transcribe audio using OpenAI gpt-4o-mini-transcribe API.
     
     Accepts:
-        FormData with 'audio' file (webm, wav, mp3, ogg)
+        FormData with:
+          - 'audio' file  (webm, wav, mp3, ogg)
+          - 'language'    optional BCP-47 code, e.g. "en" or "ar" (omit for auto-detect)
+          - 'prompt'      optional context string to improve accuracy
     
     Returns:
         {
@@ -198,6 +201,9 @@ def transcribe():
         if not allowed_file(audio_file.filename):
             return jsonify({"error": "Invalid audio file format"}), 400
         
+        language = request.form.get('language') or None
+        prompt = request.form.get('prompt') or None
+
         # Save audio file temporarily
         filename = secure_filename(audio_file.filename)
         audio_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
@@ -205,7 +211,7 @@ def transcribe():
         
         try:
             # Transcribe audio
-            text = transcribe_audio(audio_path)
+            text = transcribe_audio(audio_path, language=language, prompt=prompt)
             return jsonify({"text": text}), 200
         
         finally:

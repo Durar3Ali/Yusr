@@ -1,6 +1,6 @@
 # Quick Start Guide - Yusr Chatbot
 
-## 🚀 Get Started in 3 Steps
+## Get Started in 3 Steps
 
 ### Step 1: Start the Backend
 
@@ -25,9 +25,9 @@ npm run dev
 
 You should see:
 ```
-VITE v5.x.x  ready in xxx ms
+VITE v5.x.x ready in xxx ms
 
-➜  Local:   http://localhost:5173/
+  Local: http://localhost:5173/
 ```
 
 ### Step 3: Use the Chatbot
@@ -44,20 +44,20 @@ VITE v5.x.x  ready in xxx ms
    - Wait for "Chatbot ready!" message
    - Ask questions about your document!
 
-## 🎤 Voice Features
+## Voice Features
 
 ### Voice Input (Speech-to-Text)
-- Click the **microphone icon** 🎤
+- Click the **microphone icon**
 - Speak your question
 - Click again to stop recording
 - Your question appears in the text box
 
 ### Voice Output (Text-to-Speech)
-- Click the **speaker icon** 🔊 on any assistant message
+- Click the **speaker icon** on any assistant message
 - The message will be read aloud
 - Click again to stop
 
-## ✅ Verify Everything Works
+## Verify Everything Works
 
 ### Test Backend
 ```bash
@@ -75,7 +75,7 @@ Should return:
 3. Navigate to `/read` - should load without errors
 4. Navigate to `/chat` - should show "No Document Loaded" message
 
-## 🔧 Common Issues
+## Common Issues
 
 ### "Module not found" errors
 ```bash
@@ -107,11 +107,11 @@ lsof -ti:5000 | xargs kill -9
 - This is expected! Upload a document on `/read` first
 - Navigate to `/read` → Upload PDF or paste text → Navigate to `/chat`
 
-## 📝 Environment Setup
+## Environment Setup
 
 Your `.env` files are already configured with your OpenAI API key!
 
-### Backend `.env` ✅
+### Backend `.env`
 ```
 OPENAI_API_KEY=sk-proj-...
 FLASK_ENV=development
@@ -119,12 +119,12 @@ CORS_ORIGINS=http://localhost:5173
 PORT=5000
 ```
 
-### Frontend `.env.local` ✅
+### Frontend `.env.local`
 ```
 VITE_API_BASE_URL=http://localhost:5000
 ```
 
-## 🎉 You're Ready!
+## You're Ready!
 
 Everything is set up and ready to use. Enjoy your AI-powered document chatbot!
 

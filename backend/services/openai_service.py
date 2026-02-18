@@ -264,23 +264,35 @@ def delete_assistant(assistant_id: str, vector_store_id: Optional[str] = None, f
         raise
 
 
-def transcribe_audio(audio_file_path: str) -> str:
+def transcribe_audio(
+    audio_file_path: str,
+    language: Optional[str] = None,
+    prompt: Optional[str] = None
+) -> str:
     """
-    Transcribe audio using OpenAI Whisper API.
+    Transcribe audio using OpenAI gpt-4o-mini-transcribe API.
     
     Args:
         audio_file_path: Path to audio file
+        language: BCP-47 language code (e.g. "en", "ar"). If omitted, auto-detected.
+        prompt: Optional context string to improve accuracy (e.g. document excerpt or key terms)
     
     Returns:
         Transcribed text
     """
     try:
+        kwargs: Dict[str, Any] = {
+            "model": "gpt-4o-mini-transcribe",
+            "file": None,  # set below after opening the file
+        }
+        if language:
+            kwargs["language"] = language
+        if prompt:
+            kwargs["prompt"] = prompt
+
         with open(audio_file_path, "rb") as audio_file:
-            transcript = client.audio.transcriptions.create(
-                model="whisper-1",
-                file=audio_file,
-                language="en"  # Can be made dynamic
-            )
+            kwargs["file"] = audio_file
+            transcript = client.audio.transcriptions.create(**kwargs)
         return transcript.text
     
     except Exception as e:

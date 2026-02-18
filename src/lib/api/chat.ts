@@ -140,15 +140,31 @@ export async function deleteAssistant(
 }
 
 /**
- * Transcribe audio using OpenAI Whisper API.
+ * Transcribe audio using OpenAI gpt-4o-mini-transcribe API.
  * 
  * @param audioBlob - Audio blob to transcribe
+ * @param options.mimeType - MIME type of the blob, used to derive the file extension
+ * @param options.prompt - Optional context string to improve accuracy (e.g. document keywords)
+ * @param options.language - Optional BCP-47 language code; omit to auto-detect
  * @returns Transcribed text
  */
-export async function transcribeAudio(audioBlob: Blob): Promise<TranscribeResponse> {
+export async function transcribeAudio(
+  audioBlob: Blob,
+  options: { mimeType?: string; prompt?: string; language?: string } = {}
+): Promise<TranscribeResponse> {
+  const { mimeType, prompt, language } = options;
+
+  // Derive a sensible filename so the backend knows the format
+  const ext = mimeType?.includes('ogg') ? 'ogg'
+    : mimeType?.includes('mp4') || mimeType?.includes('m4a') ? 'mp4'
+    : mimeType?.includes('wav') ? 'wav'
+    : 'webm';
+
   const formData = new FormData();
-  formData.append('audio', audioBlob, 'recording.webm');
-  
+  formData.append('audio', audioBlob, `recording.${ext}`);
+  if (language) formData.append('language', language);
+  if (prompt) formData.append('prompt', prompt);
+
   const response = await fetch(`${API_BASE}/api/transcribe`, {
     method: 'POST',
     body: formData,
