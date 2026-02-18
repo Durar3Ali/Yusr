@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { AppHeader } from '@/components/AppHeader';
 import { AppFooter } from '@/components/AppFooter';
 import { usePreferences } from '@/context/PreferencesContext';
@@ -140,19 +141,13 @@ export default function Settings() {
         <div className="container mx-auto p-4 md:p-6 lg:p-8 max-w-4xl">
           <div className="mb-8">
             <h1 className="text-3xl font-bold mb-2">Settings</h1>
-            <p className="text-muted-foreground">
-              Manage your personal information and default reading preferences
-            </p>
           </div>
 
         <div className="space-y-8">
           {/* Personal Information */}
           <Card className="shadow-sm">
             <CardHeader>
-              <CardTitle>Personal Information</CardTitle>
-              <CardDescription>
-                Update your account details. Log in to save your profile permanently.
-              </CardDescription>
+              <CardTitle>Account</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -179,10 +174,17 @@ export default function Settings() {
                 </p>
               </div>
               {!authUser && (
-                <div className="flex items-start gap-2 p-3 rounded-md bg-muted text-sm text-muted-foreground">
-                  <span>💡</span>
-                  <p>Profile editing is disabled for guest users. Log in to save your information.</p>
-                </div>
+                <p className="text-sm text-muted-foreground p-3 rounded-md bg-muted">
+                  You don't have an account.{' '}
+                  <Link to="/auth/login" className="text-foreground underline underline-offset-4 hover:text-primary">
+                    Login
+                  </Link>{' '}
+                  if you have an account or{' '}
+                  <Link to="/auth/signup" className="text-foreground underline underline-offset-4 hover:text-primary">
+                    Sign Up
+                  </Link>
+                  .
+                </p>
               )}
               <Button onClick={handleSaveProfile} disabled={!authUser || loadingProfile}>
                 Save Profile
@@ -196,9 +198,6 @@ export default function Settings() {
           <Card className="shadow-sm">
             <CardHeader>
               <CardTitle>Reading Preferences</CardTitle>
-              <CardDescription>
-                These settings will be applied by default when you start reading. Changes are saved automatically.
-              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Theme */}
