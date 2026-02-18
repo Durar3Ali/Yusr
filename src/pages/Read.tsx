@@ -1,13 +1,14 @@
-import { useState } from 'react';
 import { AppHeader } from '@/components/AppHeader';
 import { AppFooter } from '@/components/AppFooter';
 import { OnboardingTips } from '@/components/OnboardingTips';
 import { TextUploader } from '@/components/TextUploader';
 import { Reader } from '@/components/Reader';
 import { Toolbar } from '@/components/Toolbar';
+import { ChatBot } from '@/components/ChatBot';
+import { useText } from '@/context/TextContext';
 
 export default function Read() {
-  const [originalText, setOriginalText] = useState('');
+  const { originalText, setOriginalText } = useText();
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -18,9 +19,10 @@ export default function Read() {
           <OnboardingTips />
           
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* Left column: Text Input */}
+            {/* Left column: Text Input & Chatbot */}
             <div className="lg:col-span-3 space-y-6">
               <TextUploader originalText={originalText} onTextChange={setOriginalText} />
+              <ChatBot />
             </div>
 
             {/* Center column: Formatted Reader */}
