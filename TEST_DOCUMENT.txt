@@ -1,0 +1,21 @@
+ReadWell Aid Test Document
+
+This is a test document for the YusrBot chatbot feature.
+
+Key Information:
+- ReadWell Aid is a reading assistance application
+- It features a chatbot that can answer questions about documents
+- The chatbot uses OpenAI's Assistant API with vector stores for RAG
+- Users can upload PDFs or paste text to chat about
+
+Technical Features:
+- File search capability for document understanding
+- Speech-to-text input using Whisper API
+- Text-to-speech output for responses
+- Real-time chat interface with message history
+
+Test Questions to Ask:
+1. What is ReadWell Aid?
+2. What features does the chatbot have?
+3. What API does the chatbot use?
+4. Can users upload PDFs?

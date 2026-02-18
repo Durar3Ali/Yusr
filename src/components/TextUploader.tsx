@@ -6,6 +6,7 @@ import { Upload, FileText, X, CheckCircle, AlertCircle } from 'lucide-react';
 import { extractPdfText } from '@/lib/pdf';
 import { toast } from 'sonner';
 import { useMe } from '@/hooks/useMe';
+import { useText } from '@/context/TextContext';
 import { uploadPdf } from '@/lib/api/storage';
 import { createDocument } from '@/lib/api/documents';
 
@@ -15,6 +16,7 @@ interface TextUploaderProps {
 }
 
 export function TextUploader({ onTextChange, originalText }: TextUploaderProps) {
+  const { setPdfFile, setPdfMetadata } = useText();
   const [fileName, setFileName] = useState<string>('');
   const [fileSize, setFileSize] = useState<number>(0);
   const [status, setStatus] = useState<'idle' | 'extracting' | 'success' | 'error'>('idle');
@@ -42,6 +44,13 @@ export function TextUploader({ onTextChange, originalText }: TextUploaderProps) 
       onTextChange(text);
       setStatus('success');
 
+      // Store PDF file in context for chatbot
+      setPdfFile(file);
+      setPdfMetadata({
+        name: file.name,
+        size: file.size,
+      });
+
       // If user is logged in, upload PDF and save document to Supabase
       if (authUser && me) {
         try {
@@ -51,6 +60,14 @@ export function TextUploader({ onTextChange, originalText }: TextUploaderProps) 
             title: file.name.replace(/\.pdf$/i, ''),
             file_path: filePath,
           });
+          
+          // Update metadata with URL
+          setPdfMetadata({
+            name: file.name,
+            size: file.size,
+            url: filePath,
+          });
+          
           toast.success('PDF uploaded and saved to your library');
         } catch (uploadError) {
           console.error('Failed to upload PDF:', uploadError);
@@ -76,6 +93,8 @@ export function TextUploader({ onTextChange, originalText }: TextUploaderProps) 
     setFileName('');
     setFileSize(0);
     setStatus('idle');
+    setPdfFile(null);
+    setPdfMetadata(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
