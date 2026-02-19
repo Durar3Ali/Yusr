@@ -157,7 +157,7 @@ export default function Settings() {
                   placeholder="Your name"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  disabled={!authUser || loadingProfile}
+                  disabled={loading || !authUser || loadingProfile}
                 />
               </div>
               <div className="space-y-2">
@@ -173,7 +173,7 @@ export default function Settings() {
                   Email cannot be changed here. Managed by authentication.
                 </p>
               </div>
-              {!authUser && (
+              {!loading && !authUser && (
                 <p className="text-sm text-muted-foreground p-3 rounded-md bg-muted">
                   You don't have an account.{' '}
                   <Link to="/auth/login" className="text-foreground underline underline-offset-4 hover:text-primary">
@@ -186,7 +186,7 @@ export default function Settings() {
                   .
                 </p>
               )}
-              <Button onClick={handleSaveProfile} disabled={!authUser || loadingProfile}>
+              <Button onClick={handleSaveProfile} disabled={loading || !authUser || loadingProfile}>
                 Save Profile
               </Button>
             </CardContent>
@@ -379,7 +379,7 @@ export default function Settings() {
                 <Button variant="outline" onClick={handleResetPreferences}>
                   Reset to Defaults
                 </Button>
-                <Button onClick={handleSaveReadingPreferences} disabled={!authUser}>
+                <Button onClick={handleSaveReadingPreferences} disabled={loading || !authUser}>
                   Save Reading Preferences
                 </Button>
               </div>
