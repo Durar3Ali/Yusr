@@ -37,6 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = async () => {
+    localStorage.removeItem('dyslexia-reader-preferences');
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);

@@ -3,6 +3,9 @@ import { AppFooter } from '@/components/AppFooter';
 import { FeatureCard } from '@/components/FeatureCard';
 import { CTAButtons } from '@/components/CTAButtons';
 import { copy } from '@/lib/copy';
+import { useAuth } from '@/context/AuthContext';
+import { Button } from '@/components/ui/button';
+import { Link } from 'react-router-dom';
 import {
   Type,
   Eye,
@@ -10,9 +13,11 @@ import {
   Volume2,
   Sparkles,
   CheckCircle2,
+  ArrowRight,
 } from 'lucide-react';
 
 export default function Landing() {
+  const { user } = useAuth();
   return (
     <div className="min-h-screen flex flex-col">
       <AppHeader variant="landing" />
@@ -33,13 +38,24 @@ export default function Landing() {
                 {copy.subtitle}
               </p>
               
-              <CTAButtons
-                primaryText={copy.ctaPrimary}
-                primaryHref="/read"
-                secondaryText={copy.ctaSecondary}
-                secondaryHref="/auth/login"
-                className="justify-center animate-fade-in"
-              />
+              {user ? (
+                <div className="flex justify-center animate-fade-in">
+                  <Button asChild size="lg" className="group">
+                    <Link to="/read">
+                      Start Reading
+                      <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                    </Link>
+                  </Button>
+                </div>
+              ) : (
+                <CTAButtons
+                  primaryText={copy.ctaPrimary}
+                  primaryHref="/read"
+                  secondaryText={copy.ctaSecondary}
+                  secondaryHref="/auth/login"
+                  className="justify-center animate-fade-in"
+                />
+              )}
             </div>
           </div>
         </section>
@@ -163,15 +179,28 @@ export default function Landing() {
                 Start reading better today
               </h2>
               <p className="text-lg text-muted-foreground">
-                No sign-up required. Try Yusr as a guest and customize your reading experience instantly.
+                {user
+                  ? 'Welcome back! Jump straight into your reading experience.'
+                  : 'No sign-up required. Try Yusr as a guest and customize your reading experience instantly.'}
               </p>
-              <CTAButtons
-                primaryText="Try as Guest"
-                primaryHref="/read"
-                secondaryText="Log in"
-                secondaryHref="/auth/login"
-                className="justify-center"
-              />
+              {user ? (
+                <div className="flex justify-center">
+                  <Button asChild size="lg" className="group">
+                    <Link to="/read">
+                      Go to Reader
+                      <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                    </Link>
+                  </Button>
+                </div>
+              ) : (
+                <CTAButtons
+                  primaryText="Try as Guest"
+                  primaryHref="/read"
+                  secondaryText="Log in"
+                  secondaryHref="/auth/login"
+                  className="justify-center"
+                />
+              )}
             </div>
           </div>
         </section>
