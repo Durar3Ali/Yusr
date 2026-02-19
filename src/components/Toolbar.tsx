@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { usePreferences } from '@/context/PreferencesContext';
+import { useMe } from '@/hooks/useMe';
+import { upsertPreferences } from '@/lib/api/preferences';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import {
@@ -24,9 +26,34 @@ type TTSState = 'idle' | 'playing' | 'paused';
 
 export function Toolbar({ originalText }: ToolbarProps) {
   const { preferences, setPreferences } = usePreferences();
+  const { me } = useMe();
   const [ttsState, setTtsState] = useState<TTSState>('idle');
   const [speechRate, setSpeechRate] = useState(1.0);
+  const [saving, setSaving] = useState(false);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+
+  const handleSavePreferences = async () => {
+    if (!me) return;
+    try {
+      setSaving(true);
+      await upsertPreferences({
+        user_id: me.id,
+        theme: preferences.theme,
+        font_family: preferences.fontFamily,
+        font_size: preferences.fontSize,
+        line_spacing: preferences.lineSpacing,
+        letter_spacing: preferences.letterSpacing,
+        lead_bold: preferences.leadBold,
+        group_size: preferences.groupSize,
+        lang_hint: preferences.langHint,
+      });
+      toast.success('Preferences saved');
+    } catch {
+      toast.error('Failed to save preferences');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   // Cleanup speech on unmount
   useEffect(() => {
@@ -234,6 +261,13 @@ export function Toolbar({ originalText }: ToolbarProps) {
           </div>
         </RadioGroup>
       </div>
+
+      {/* Save Preferences */}
+      {me && (
+        <Button onClick={handleSavePreferences} disabled={saving} className="w-full" size="sm">
+          {saving ? 'Saving...' : 'Save Preferences'}
+        </Button>
+      )}
 
       {/* Speech Rate */}
       <div className="space-y-2">

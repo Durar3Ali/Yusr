@@ -25,7 +25,7 @@ export default function Read() {
 
             {/* Center column: Formatted Reader */}
             <div className="lg:col-span-6">
-              <div className="bg-card rounded-lg border min-h-[600px] shadow-sm">
+              <div className="bg-card rounded-lg border min-h-[600px] shadow-sm overflow-hidden">
                 <Reader originalText={originalText} onTextChange={setOriginalText} />
               </div>
             </div>
