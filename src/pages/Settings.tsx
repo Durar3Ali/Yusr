@@ -20,7 +20,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { FontFamily, LeadBoldStrength, LanguageHint, Theme } from '@/types';
-import { getPreferences, upsertPreferences } from '@/lib/api/preferences';
+import { upsertPreferences } from '@/lib/api/preferences';
 import { updateMe } from '@/lib/api/users';
 
 export default function Settings() {
@@ -31,35 +31,15 @@ export default function Settings() {
   const [email, setEmail] = useState('');
   const [loadingProfile, setLoadingProfile] = useState(false);
 
-  // Load profile and settings from Supabase on mount if user is logged in
+  // Load profile from Supabase on mount if user is logged in (preferences are loaded app-wide in PreferencesContext)
   useEffect(() => {
     if (me && !fullName && !email) {
       setLoadingProfile(true);
-      
-      // Set profile data from me (only if fields are empty)
       setFullName(me.full_name || '');
       setEmail(me.email);
       setLoadingProfile(false);
-      
-      // Load preferences
-      getPreferences(me.id)
-        .then(data => {
-          setPreferences({
-            theme: data.theme as Theme,
-            fontFamily: data.font_family as FontFamily,
-            fontSize: data.font_size,
-            lineSpacing: data.line_spacing,
-            letterSpacing: data.letter_spacing,
-            leadBold: data.lead_bold as LeadBoldStrength,
-            groupSize: data.group_size,
-            langHint: data.lang_hint as LanguageHint,
-          });
-        })
-        .catch(err => {
-          console.error('Failed to load preferences:', err);
-        });
     }
-  }, [me, setPreferences, fullName, email]);
+  }, [me, fullName, email]);
 
   // Save preferences to Supabase when changed (if logged in)
   useEffect(() => {
