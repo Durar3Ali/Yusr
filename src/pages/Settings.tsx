@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { AppHeader } from '@/components/AppHeader';
 import { AppFooter } from '@/components/AppFooter';
 import { usePreferences } from '@/context/PreferencesContext';
@@ -19,7 +20,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { FontFamily, LeadBoldStrength, LanguageHint, Theme } from '@/types';
-import { getPreferences, upsertPreferences } from '@/lib/api/preferences';
+import { upsertPreferences } from '@/lib/api/preferences';
 import { updateMe } from '@/lib/api/users';
 
 export default function Settings() {
@@ -30,35 +31,15 @@ export default function Settings() {
   const [email, setEmail] = useState('');
   const [loadingProfile, setLoadingProfile] = useState(false);
 
-  // Load profile and settings from Supabase on mount if user is logged in
+  // Load profile from Supabase on mount if user is logged in (preferences are loaded app-wide in PreferencesContext)
   useEffect(() => {
     if (me && !fullName && !email) {
       setLoadingProfile(true);
-      
-      // Set profile data from me (only if fields are empty)
       setFullName(me.full_name || '');
       setEmail(me.email);
       setLoadingProfile(false);
-      
-      // Load preferences
-      getPreferences(me.id)
-        .then(data => {
-          setPreferences({
-            theme: data.theme as Theme,
-            fontFamily: data.font_family as FontFamily,
-            fontSize: data.font_size,
-            lineSpacing: data.line_spacing,
-            letterSpacing: data.letter_spacing,
-            leadBold: data.lead_bold as LeadBoldStrength,
-            groupSize: data.group_size,
-            langHint: data.lang_hint as LanguageHint,
-          });
-        })
-        .catch(err => {
-          console.error('Failed to load preferences:', err);
-        });
     }
-  }, [me, setPreferences, fullName, email]);
+  }, [me, fullName, email]);
 
   // Save preferences to Supabase when changed (if logged in)
   useEffect(() => {
@@ -140,19 +121,13 @@ export default function Settings() {
         <div className="container mx-auto p-4 md:p-6 lg:p-8 max-w-4xl">
           <div className="mb-8">
             <h1 className="text-3xl font-bold mb-2">Settings</h1>
-            <p className="text-muted-foreground">
-              Manage your personal information and default reading preferences
-            </p>
           </div>
 
         <div className="space-y-8">
           {/* Personal Information */}
           <Card className="shadow-sm">
             <CardHeader>
-              <CardTitle>Personal Information</CardTitle>
-              <CardDescription>
-                Update your account details. Log in to save your profile permanently.
-              </CardDescription>
+              <CardTitle>Account</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -162,7 +137,7 @@ export default function Settings() {
                   placeholder="Your name"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  disabled={!authUser || loadingProfile}
+                  disabled={loading || !authUser || loadingProfile}
                 />
               </div>
               <div className="space-y-2">
@@ -178,13 +153,20 @@ export default function Settings() {
                   Email cannot be changed here. Managed by authentication.
                 </p>
               </div>
-              {!authUser && (
-                <div className="flex items-start gap-2 p-3 rounded-md bg-muted text-sm text-muted-foreground">
-                  <span>💡</span>
-                  <p>Profile editing is disabled for guest users. Log in to save your information.</p>
-                </div>
+              {!loading && !authUser && (
+                <p className="text-sm text-muted-foreground p-3 rounded-md bg-muted">
+                  You don't have an account.{' '}
+                  <Link to="/auth/login" className="text-foreground underline underline-offset-4 hover:text-primary">
+                    Login
+                  </Link>{' '}
+                  if you have an account or{' '}
+                  <Link to="/auth/signup" className="text-foreground underline underline-offset-4 hover:text-primary">
+                    Sign Up
+                  </Link>
+                  .
+                </p>
               )}
-              <Button onClick={handleSaveProfile} disabled={!authUser || loadingProfile}>
+              <Button onClick={handleSaveProfile} disabled={loading || !authUser || loadingProfile}>
                 Save Profile
               </Button>
             </CardContent>
@@ -196,9 +178,6 @@ export default function Settings() {
           <Card className="shadow-sm">
             <CardHeader>
               <CardTitle>Reading Preferences</CardTitle>
-              <CardDescription>
-                These settings will be applied by default when you start reading. Changes are saved automatically.
-              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Theme */}
@@ -380,7 +359,7 @@ export default function Settings() {
                 <Button variant="outline" onClick={handleResetPreferences}>
                   Reset to Defaults
                 </Button>
-                <Button onClick={handleSaveReadingPreferences} disabled={!authUser}>
+                <Button onClick={handleSaveReadingPreferences} disabled={loading || !authUser}>
                   Save Reading Preferences
                 </Button>
               </div>
