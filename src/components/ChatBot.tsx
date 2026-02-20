@@ -3,9 +3,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Loader2, Send, Mic, Volume2, VolumeX, AlertCircle, FileText } from 'lucide-react';
+import { Loader2, Send, Mic, Volume2, VolumeX, AlertCircle, Bot } from 'lucide-react';
 import { useText } from '@/context/TextContext';
-import { createAssistant, sendChatMessage, deleteAssistant, transcribeAudio } from '@/lib/api/chat';
+import { createAssistant, sendChatMessage, deleteAssistant, transcribeAudio, synthesizeSpeech } from '@/lib/api/chat';
 import { toast } from 'sonner';
 
 interface Message {
@@ -34,28 +34,45 @@ export function ChatBot() {
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [activeMode, setActiveMode] = useState<'summarize' | 'explain' | null>(null);
   
+  const chatbotReadyNotified = useRef(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to bottom when new messages arrive
+  // Auto-scroll to bottom when new messages arrive, scoped to the ScrollArea only
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (scrollAreaRef.current) {
+      const viewport = scrollAreaRef.current.querySelector(
+        '[data-radix-scroll-area-viewport]'
+      );
+      if (viewport) viewport.scrollTop = viewport.scrollHeight;
+    }
   }, [messages]);
 
   // Initialize assistant when component mounts or text changes
   useEffect(() => {
     const initializeAssistant = async () => {
       if (!originalText && !pdfFile) {
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/c1be8d64-becc-43b3-8ad9-6ff78b23520f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChatBot.tsx:43',message:'No document to chat about',data:{hasOriginalText:!!originalText,hasPdfFile:!!pdfFile},timestamp:Date.now(),hypothesisId:'H5'})}).catch(()=>{});
-        // #endregion
-        return; // No document to chat about
+        // Stop any ongoing TTS when the document is cleared
+        if (audioRef.current) {
+          audioRef.current.pause();
+          audioRef.current.src = '';
+          audioRef.current = null;
+        }
+        setIsSpeaking(false);
+
+        // Clear all conversation state when document is removed (e.g. Clear button)
+        setMessages([]);
+        setAssistantId(null);
+        setThreadId(null);
+        setVectorStoreId(null);
+        setFileId(null);
+        chatbotReadyNotified.current = false;
+        return;
       }
 
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/c1be8d64-becc-43b3-8ad9-6ff78b23520f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChatBot.tsx:47',message:'Starting initialization',data:{hasOriginalText:!!originalText,hasPdfFile:!!pdfFile,pdfFileName:pdfMetadata?.name},timestamp:Date.now(),hypothesisId:'H5'})}).catch(()=>{});
-      // #endregion
-      
+      // Reset notification flag so each new document gets exactly one toast
+      chatbotReadyNotified.current = false;
+
       setIsInitializing(true);
 
       try {
@@ -85,32 +102,27 @@ export function ChatBot() {
           },
         ]);
 
-        toast.success('Chatbot ready! Ask me anything about your document.');
-        
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/c1be8d64-becc-43b3-8ad9-6ff78b23520f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChatBot.tsx:76',message:'Initialization successful',data:{assistantId:response.assistant_id,threadId:response.thread_id},timestamp:Date.now(),hypothesisId:'H5'})}).catch(()=>{});
-        // #endregion
+        // Show the "ready" toast only once per document session
+        if (!chatbotReadyNotified.current) {
+          toast.success('Chatbot ready! Ask me anything about your document.');
+          chatbotReadyNotified.current = true;
+        }
       } catch (error) {
         console.error('Failed to initialize assistant:', error);
-        
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/c1be8d64-becc-43b3-8ad9-6ff78b23520f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChatBot.tsx:78',message:'Initialization failed',data:{error:error instanceof Error ? error.message : String(error),errorType:error?.constructor?.name},timestamp:Date.now(),hypothesisId:'H5'})}).catch(()=>{});
-        // #endregion
-        
         toast.error(error instanceof Error ? error.message : 'Failed to initialize chatbot');
       } finally {
         setIsInitializing(false);
-        
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/c1be8d64-becc-43b3-8ad9-6ff78b23520f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChatBot.tsx:81',message:'Initialization complete (finally block)',data:{isInitializing:false,hasAssistantId:!!assistantId},timestamp:Date.now(),hypothesisId:'H5'})}).catch(()=>{});
-        // #endregion
       }
     };
 
-    initializeAssistant();
+    // Debounce initialization by 800ms so rapid keystrokes don't trigger it
+    const timer = setTimeout(() => {
+      initializeAssistant();
+    }, 800);
 
-    // Cleanup on unmount
+    // Cleanup on unmount or before next effect run
     return () => {
+      clearTimeout(timer);
       if (assistantId && vectorStoreId && fileId) {
         deleteAssistant(assistantId, vectorStoreId, fileId).catch(console.error);
       }
@@ -262,27 +274,43 @@ export function ChatBot() {
     toast.info('Listening... Speak now');
   };
 
-  // Text-to-Speech: Speak message
-  const speakMessage = (text: string) => {
+  // Text-to-Speech: Speak message using OpenAI TTS
+  const speakMessage = async (text: string) => {
     if (isSpeaking) {
-      window.speechSynthesis.cancel();
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = '';
+        audioRef.current = null;
+      }
       setIsSpeaking(false);
       return;
     }
 
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'en-US';
-    utterance.rate = 1.0;
-    utterance.pitch = 1.0;
+    try {
+      setIsSpeaking(true);
+      const objectUrl = await synthesizeSpeech(text);
+      const audio = new Audio(objectUrl);
+      audioRef.current = audio;
 
-    utterance.onstart = () => setIsSpeaking(true);
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => {
+      audio.onended = () => {
+        URL.revokeObjectURL(objectUrl);
+        audioRef.current = null;
+        setIsSpeaking(false);
+      };
+
+      audio.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        audioRef.current = null;
+        setIsSpeaking(false);
+        toast.error('Failed to speak text');
+      };
+
+      await audio.play();
+    } catch (error) {
+      audioRef.current = null;
       setIsSpeaking(false);
-      toast.error('Failed to speak text');
-    };
-
-    window.speechSynthesis.speak(utterance);
+      toast.error(error instanceof Error ? error.message : 'Failed to speak text');
+    }
   };
 
   // Empty state: No document loaded
@@ -291,7 +319,7 @@ export function ChatBot() {
       <div className="p-4 bg-card rounded-lg border">
         <div className="flex items-center gap-2 mb-3">
           <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-            <FileText className="h-4 w-4 text-primary" />
+            <Bot className="h-4 w-4 text-primary" />
           </div>
           <h3 className="font-semibold">YusrBot</h3>
         </div>
@@ -308,7 +336,7 @@ export function ChatBot() {
       <div className="p-4 bg-card rounded-lg border">
         <div className="flex items-center gap-2 mb-3">
           <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-            <FileText className="h-4 w-4 text-primary" />
+            <Bot className="h-4 w-4 text-primary" />
           </div>
           <h3 className="font-semibold">YusrBot</h3>
         </div>
@@ -327,7 +355,7 @@ export function ChatBot() {
       {/* Header */}
       <div className="flex items-center gap-2 pb-3 border-b">
         <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-          <FileText className="h-4 w-4 text-primary" />
+          <Bot className="h-4 w-4 text-primary" />
         </div>
         <h3 className="font-semibold">YusrBot</h3>
       </div>
@@ -456,7 +484,6 @@ export function ChatBot() {
                 </div>
               )}
 
-              <div ref={messagesEndRef} />
             </div>
           </ScrollArea>
         </div>

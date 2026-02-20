@@ -4,7 +4,7 @@ Provides endpoints for assistant management, chat, and speech-to-text.
 """
 import os
 import tempfile
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
 from dotenv import load_dotenv
 from werkzeug.utils import secure_filename
@@ -13,7 +13,8 @@ from services.openai_service import (
     create_assistant_with_file,
     send_message,
     delete_assistant,
-    transcribe_audio
+    transcribe_audio,
+    synthesize_speech,
 )
 
 # Load environment variables - override=True ensures .env values take precedence
@@ -222,6 +223,35 @@ def transcribe():
                 except Exception as e:
                     print(f"Error cleaning up audio file: {str(e)}")
     
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/tts', methods=['POST'])
+def text_to_speech():
+    """
+    Convert text to speech using OpenAI TTS.
+
+    Request body:
+        {
+            "text": "...",
+            "voice": "alloy"  (optional, default: alloy)
+        }
+
+    Returns:
+        MP3 audio stream (audio/mpeg)
+    """
+    try:
+        data = request.get_json()
+        text = (data.get('text') or '').strip()
+        voice = data.get('voice', 'alloy')
+
+        if not text:
+            return jsonify({"error": "text is required"}), 400
+
+        audio_bytes = synthesize_speech(text, voice)
+        return Response(audio_bytes, mimetype='audio/mpeg')
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
