@@ -298,3 +298,26 @@ def transcribe_audio(
     except Exception as e:
         print(f"Error transcribing audio: {str(e)}")
         raise
+
+
+def synthesize_speech(text: str, voice: str = 'alloy') -> bytes:
+    """
+    Convert text to speech using OpenAI TTS.
+
+    Args:
+        text: The text to synthesize (max 4096 characters).
+        voice: One of alloy, echo, fable, onyx, nova, shimmer.
+
+    Returns:
+        MP3 audio as bytes.
+    """
+    try:
+        response = client.audio.speech.create(
+            model='tts-1',
+            voice=voice,
+            input=text,
+        )
+        return response.content
+    except Exception as e:
+        print(f"Error synthesizing speech: {str(e)}")
+        raise
