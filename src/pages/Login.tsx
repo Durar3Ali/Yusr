@@ -10,6 +10,12 @@ import { toast } from 'sonner';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
 
+const getUserIP = async (): Promise<string> => {
+  const res = await fetch('https://api.ipify.org?format=json');
+  const data = await res.json();
+  return data.ip;
+};
+
 export default function Login() {
   console.log('Login component rendering...');
   
@@ -28,21 +34,19 @@ export default function Login() {
     }
   }, [user, navigate]);
 
-  // On mount: check localStorage for an existing rate limit that survived a page refresh
+  // On mount: check DB for an existing rate limit block
   useEffect(() => {
-    const stored = localStorage.getItem('login_rate_limit_until');
-    if (stored) {
-      const remaining = parseInt(stored) - Date.now();
-      if (remaining > 0) {
-        setIsRateLimited(true);
-        setTimeout(() => {
-          setIsRateLimited(false);
-          localStorage.removeItem('login_rate_limit_until');
-        }, remaining);
-      } else {
-        localStorage.removeItem('login_rate_limit_until');
+    const checkBlock = async () => {
+      try {
+        const ip = await getUserIP();
+        if (!ip) return;
+        const { data: blocked } = await supabase.rpc('check_rate_limit', { p_email: email, p_ip: ip });
+        if (blocked) setIsRateLimited(true);
+      } catch {
+        // silently ignore — do not block the user if the check fails
       }
-    }
+    };
+    checkBlock();
   }, []);
 
   // When password field is cleared, reset eye to closed (hidden)
@@ -55,27 +59,32 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      const ip = await getUserIP();
+
+      // Check DB block before attempting login
+      const { data: blocked } = await supabase.rpc('check_rate_limit', { p_email: email, p_ip: ip });
+      if (blocked) {
+        setIsRateLimited(true);
+        setLoading(false);
+        return;
+      }
+
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
 
       if (error) {
-        if (error.status === 429) {
-          const { data: serverNow } = await supabase.rpc('get_server_time');
-          const base = typeof serverNow === 'number' ? serverNow : Date.now();
-          const until = base + 10 * 60 * 1000;
-          const remaining = until - Date.now();
-          localStorage.setItem('login_rate_limit_until', until.toString());
+        // Record the failed attempt in DB
+        await supabase.rpc('record_failed_attempt', { p_email: email, p_ip: ip });
+
+        // Check if the user is now blocked after this attempt
+        const { data: nowBlocked } = await supabase.rpc('check_rate_limit', { p_email: email, p_ip: ip });
+        if (nowBlocked) {
           setIsRateLimited(true);
-          setTimeout(() => {
-            setIsRateLimited(false);
-            localStorage.removeItem('login_rate_limit_until');
-          }, remaining);
         } else {
           toast.error(error.message);
         }
       } else {
+        // Reset the counter on successful login
+        await supabase.rpc('reset_rate_limit', { p_email: email, p_ip: ip });
         toast.success('Login successful!');
         navigate('/read');
       }

@@ -159,5 +159,68 @@ with check (
       and u.auth_user_id = auth.uid()
   )
 );
+create or replace function public.get_server_time()
+returns bigint
+language sql
+security definer
+as $$
+  select extract(epoch from now())::bigint * 1000;
+$$;
+
+create table public.login_rate_limit (
+  id            uuid primary key default gen_random_uuid(),
+  email         text not null,
+  ip            inet not null,
+  failed_count  int default 0,
+  blocked_until timestamptz,
+  updated_at    timestamptz default now(),
+  unique(email, ip)
+);
+
+create or replace function public.check_rate_limit(p_email text, p_ip inet)
+returns boolean language plpgsql security definer as $$
+declare v_blocked_until timestamptz; v_failed_count int;
+begin
+  select blocked_until, failed_count into v_blocked_until, v_failed_count
+  from public.login_rate_limit
+  where email = p_email and ip = p_ip;
+
+  if not found then return false; end if;
+
+  -- Block expired: reset counter
+  if v_blocked_until is not null and v_blocked_until < now() then
+    update public.login_rate_limit
+    set failed_count = 0, blocked_until = null, updated_at = now()
+    where email = p_email and ip = p_ip;
+    return false;
+  end if;
+
+  return v_blocked_until is not null and v_blocked_until >= now();
+end $$;
+
+create or replace function public.record_failed_attempt(p_email text, p_ip inet)
+returns void language plpgsql security definer as $$
+declare v_new_count int;
+begin
+  insert into public.login_rate_limit (email, ip, failed_count, updated_at)
+  values (p_email, p_ip, 1, now())
+  on conflict (email, ip) do update
+  set failed_count = login_rate_limit.failed_count + 1, updated_at = now()
+  returning failed_count into v_new_count;
+
+  if v_new_count >= 5 then
+    update public.login_rate_limit
+    set blocked_until = now() + interval '10 minutes'
+    where email = p_email and ip = p_ip;
+  end if;
+end $$;
+
+create or replace function public.reset_rate_limit(p_email text, p_ip inet)
+returns void language plpgsql security definer as $$
+begin
+  update public.login_rate_limit
+  set failed_count = 0, blocked_until = null, updated_at = now()
+  where email = p_email and ip = p_ip;
+end $$;
 
 commit;
