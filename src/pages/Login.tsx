@@ -17,6 +17,7 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isRateLimited, setIsRateLimited] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -26,6 +27,23 @@ export default function Login() {
       navigate('/read');
     }
   }, [user, navigate]);
+
+  // On mount: check localStorage for an existing rate limit that survived a page refresh
+  useEffect(() => {
+    const stored = localStorage.getItem('login_rate_limit_until');
+    if (stored) {
+      const remaining = parseInt(stored) - Date.now();
+      if (remaining > 0) {
+        setIsRateLimited(true);
+        setTimeout(() => {
+          setIsRateLimited(false);
+          localStorage.removeItem('login_rate_limit_until');
+        }, remaining);
+      } else {
+        localStorage.removeItem('login_rate_limit_until');
+      }
+    }
+  }, []);
 
   // When password field is cleared, reset eye to closed (hidden)
   useEffect(() => {
@@ -43,7 +61,20 @@ export default function Login() {
       });
 
       if (error) {
-        toast.error(error.message);
+        if (error.status === 429) {
+          const { data: serverNow } = await supabase.rpc('get_server_time');
+          const base = typeof serverNow === 'number' ? serverNow : Date.now();
+          const until = base + 10 * 60 * 1000;
+          const remaining = until - Date.now();
+          localStorage.setItem('login_rate_limit_until', until.toString());
+          setIsRateLimited(true);
+          setTimeout(() => {
+            setIsRateLimited(false);
+            localStorage.removeItem('login_rate_limit_until');
+          }, remaining);
+        } else {
+          toast.error(error.message);
+        }
       } else {
         toast.success('Login successful!');
         navigate('/read');
@@ -106,9 +137,14 @@ export default function Login() {
                   </button>
                 </div>
               </div>
-              <Button type="submit" className="w-full" disabled={loading}>
+              <Button type="submit" className="w-full" disabled={loading || isRateLimited}>
                 {loading ? 'Logging in...' : 'Login'}
               </Button>
+              {isRateLimited && (
+                <p className="text-sm text-destructive text-center">
+                  Too many failed attempts. Please try again after 10 minutes.
+                </p>
+              )}
               <Button
                 type="button"
                 variant="outline"
