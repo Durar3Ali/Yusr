@@ -32,3 +32,15 @@ export async function getSignedUrl(file_path: string, expiresIn = 600): Promise<
   if (error) throw error;
   return data.signedUrl;
 }
+
+/**
+ * Delete a file from Supabase Storage
+ * @param file_path - The storage path of the file (e.g. documents/<authUserId>/<uuid>.pdf)
+ */
+export async function deleteFile(file_path: string): Promise<void> {
+  const { error } = await supabase.storage
+    .from('documents')
+    .remove([file_path]);
+
+  if (error) throw error;
+}

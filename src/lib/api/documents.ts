@@ -5,6 +5,7 @@ export interface Document {
   user_id: number;
   title: string;
   file_path: string | null;
+  created_at: string;
 }
 
 export interface CreateDocumentPayload {

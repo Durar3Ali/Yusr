@@ -9,6 +9,7 @@ import { TextProvider } from "@/context/TextContext";
 import Landing from "./pages/Landing";
 import Read from "./pages/Read";
 import Settings from "./pages/Settings";
+import Library from "./pages/Library";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import NotFound from "./pages/NotFound";
@@ -30,6 +31,7 @@ const App = () => (
                 {/* Redirect /chat to /read since chatbot is now integrated */}
                 <Route path="/chat" element={<Navigate to="/read" replace />} />
                 <Route path="/settings" element={<Settings />} />
+                <Route path="/library" element={<Library />} />
                 <Route path="/auth/login" element={<Login />} />
                 <Route path="/auth/signup" element={<Signup />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

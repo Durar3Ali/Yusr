@@ -47,6 +47,15 @@ export function AppHeader({ variant = 'app' }: AppHeaderProps) {
               >
                 <Link to="/read">Read</Link>
               </Button>
+              {authUser && (
+                <Button
+                  variant={location.pathname === '/library' ? 'secondary' : 'ghost'}
+                  asChild
+                  size="sm"
+                >
+                  <Link to="/library">Library</Link>
+                </Button>
+              )}
               <Button
                 variant={location.pathname === '/settings' ? 'secondary' : 'ghost'}
                 asChild
