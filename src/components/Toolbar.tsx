@@ -16,6 +16,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Play, Pause, Square } from 'lucide-react';
 import { FontFamily, LeadBoldStrength, LanguageHint } from '@/types';
 import { normalize } from '@/lib/textPipeline';
+import { synthesizeSpeech } from '@/lib/api/tts';
 import { toast } from 'sonner';
 
 interface ToolbarProps {
@@ -30,7 +31,10 @@ export function Toolbar({ originalText }: ToolbarProps) {
   const [ttsState, setTtsState] = useState<TTSState>('idle');
   const [speechRate, setSpeechRate] = useState(1.0);
   const [saving, setSaving] = useState(false);
-  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const chunksRef = useRef<string[]>([]);
+  const currentObjectUrlRef = useRef<string | null>(null);
 
   const handleSavePreferences = async () => {
     if (!me) return;
@@ -55,71 +59,109 @@ export function Toolbar({ originalText }: ToolbarProps) {
     }
   };
 
-  // Cleanup speech on unmount
+  // Cleanup AI audio on unmount
   useEffect(() => {
     return () => {
-      if (window.speechSynthesis.speaking) {
-        window.speechSynthesis.cancel();
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = '';
+      }
+      if (currentObjectUrlRef.current) {
+        URL.revokeObjectURL(currentObjectUrlRef.current);
       }
     };
   }, []);
 
-  const handlePlay = () => {
+  /** Split text into chunks of at most maxLen chars, breaking at word boundaries. */
+  const splitIntoChunks = (text: string, maxLen = 4000): string[] => {
+    const chunks: string[] = [];
+    let remaining = text;
+    while (remaining.length > maxLen) {
+      let splitAt = remaining.lastIndexOf(' ', maxLen);
+      if (splitAt <= 0) splitAt = maxLen;
+      chunks.push(remaining.slice(0, splitAt).trim());
+      remaining = remaining.slice(splitAt).trim();
+    }
+    if (remaining.length > 0) chunks.push(remaining);
+    return chunks;
+  };
+
+  /** Fetch and play the next chunk in the queue. */
+  const playNextChunk = async (rate: number) => {
+    const chunk = chunksRef.current.shift();
+    if (!chunk) {
+      setTtsState('idle');
+      return;
+    }
+
+    try {
+      const objectUrl = await synthesizeSpeech(chunk);
+      currentObjectUrlRef.current = objectUrl;
+
+      const audio = new Audio(objectUrl);
+      audio.playbackRate = rate;
+      audioRef.current = audio;
+
+      audio.onended = () => {
+        URL.revokeObjectURL(objectUrl);
+        currentObjectUrlRef.current = null;
+        audioRef.current = null;
+        playNextChunk(rate);
+      };
+
+      audio.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        currentObjectUrlRef.current = null;
+        audioRef.current = null;
+        toast.error('Text-to-speech error occurred');
+        setTtsState('idle');
+      };
+
+      await audio.play();
+      setTtsState('playing');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Text-to-speech error occurred');
+      setTtsState('idle');
+    }
+  };
+
+  const handlePlay = async () => {
     if (!originalText.trim()) {
       toast.error('No text to read');
       return;
     }
 
-    if (ttsState === 'paused') {
-      window.speechSynthesis.resume();
+    if (ttsState === 'paused' && audioRef.current) {
+      audioRef.current.playbackRate = speechRate;
+      await audioRef.current.play();
       setTtsState('playing');
       return;
     }
 
-    // Create new utterance
     const normalized = normalize(originalText);
-    const utterance = new SpeechSynthesisUtterance(normalized);
-    
-    // Set language based on hint
-    if (preferences.langHint === 'ar') {
-      utterance.lang = 'ar-SA';
-    } else if (preferences.langHint === 'en') {
-      utterance.lang = 'en-US';
-    } else {
-      utterance.lang = 'en-US'; // default
-    }
-    
-    utterance.rate = speechRate;
-    utterance.pitch = 1.0;
-
-    utterance.onend = () => {
-      setTtsState('idle');
-      utteranceRef.current = null;
-    };
-
-    utterance.onerror = (event) => {
-      console.error('TTS error:', event);
-      toast.error('Text-to-speech error occurred');
-      setTtsState('idle');
-      utteranceRef.current = null;
-    };
-
-    utteranceRef.current = utterance;
-    window.speechSynthesis.speak(utterance);
-    setTtsState('playing');
+    chunksRef.current = splitIntoChunks(normalized);
+    await playNextChunk(speechRate);
   };
 
   const handlePause = () => {
-    if (window.speechSynthesis.speaking) {
-      window.speechSynthesis.pause();
+    if (audioRef.current && ttsState === 'playing') {
+      audioRef.current.pause();
       setTtsState('paused');
     }
   };
 
   const handleStop = () => {
-    window.speechSynthesis.cancel();
+    chunksRef.current = [];
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.src = '';
+      audioRef.current = null;
+    }
+    if (currentObjectUrlRef.current) {
+      URL.revokeObjectURL(currentObjectUrlRef.current);
+      currentObjectUrlRef.current = null;
+    }
     setTtsState('idle');
-    utteranceRef.current = null;
   };
 
   return (
@@ -319,7 +361,7 @@ export function Toolbar({ originalText }: ToolbarProps) {
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">
-          Uses Web Speech API. Browser support may vary.
+          Uses AI synthesis for higher quality audio.
         </p>
       </div>
     </div>

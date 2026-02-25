@@ -1,7 +1,15 @@
+import os
 import re
 import fitz
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
+from pydantic import BaseModel
+from dotenv import load_dotenv
+from openai import OpenAI
+
+load_dotenv()
+_openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # Arabic combining diacritical marks (harakat, shadda, tanwin, etc.).
 # These are sometimes output by PyMuPDF as isolated tokens with a space
@@ -12,9 +20,11 @@ _COMBINING_RE = re.compile(
 
 app = FastAPI(title="Readwell PDF Extraction")
 
+_cors_origins = [o.strip() for o in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -35,6 +45,23 @@ def _extract_page_text(page: fitz.Page) -> str:
         if line:
             lines.append(line)
     return "\n".join(lines)
+
+
+class TTSRequest(BaseModel):
+    text: str
+    voice: str = 'alloy'
+
+
+@app.post("/api/tts")
+async def text_to_speech(req: TTSRequest):
+    if not req.text.strip():
+        raise HTTPException(status_code=400, detail="text is required")
+    audio = _openai_client.audio.speech.create(
+        model='tts-1',
+        voice=req.voice,
+        input=req.text,
+    )
+    return Response(content=audio.content, media_type='audio/mpeg')
 
 
 @app.post("/extract-pdf")
