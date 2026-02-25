@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabaseClient';
+import { STORAGE_KEYS } from '@/lib/constants';
 
 interface AuthContextValue {
   user: User | null;
@@ -37,7 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = async () => {
-    localStorage.removeItem('dyslexia-reader-preferences');
+    localStorage.removeItem(STORAGE_KEYS.PREFERENCES);
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);

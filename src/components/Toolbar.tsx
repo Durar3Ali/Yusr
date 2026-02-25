@@ -1,56 +1,33 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { usePreferences } from '@/context/PreferencesContext';
 import { useMe } from '@/hooks/useMe';
-import { upsertPreferences } from '@/lib/api/preferences';
+import { useTTS } from '@/hooks/useTTS';
+import { upsertPreferences, preferencesToDbPayload } from '@/lib/api/preferences';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Play, Pause, Square } from 'lucide-react';
-import { FontFamily, LeadBoldStrength, LanguageHint } from '@/types';
-import { normalize } from '@/lib/textPipeline';
-import { synthesizeSpeech } from '@/lib/api/tts';
+import { FontFamilySelect } from '@/components/preferences/FontFamilySelect';
+import { LeadBoldRadioGroup } from '@/components/preferences/LeadBoldRadioGroup';
+import { LangHintRadioGroup } from '@/components/preferences/LangHintRadioGroup';
+import { SliderControl } from '@/components/preferences/SliderControl';
 import { toast } from 'sonner';
 
 interface ToolbarProps {
   originalText: string;
 }
 
-type TTSState = 'idle' | 'playing' | 'paused';
-
 export function Toolbar({ originalText }: ToolbarProps) {
   const { preferences, setPreferences } = usePreferences();
   const { me } = useMe();
-  const [ttsState, setTtsState] = useState<TTSState>('idle');
-  const [speechRate, setSpeechRate] = useState(1.0);
+  const { state: ttsState, speechRate, setSpeechRate, play, pause, stop } = useTTS(originalText);
   const [saving, setSaving] = useState(false);
-
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const chunksRef = useRef<string[]>([]);
-  const currentObjectUrlRef = useRef<string | null>(null);
 
   const handleSavePreferences = async () => {
     if (!me) return;
     try {
       setSaving(true);
-      await upsertPreferences({
-        user_id: me.id,
-        theme: preferences.theme,
-        font_family: preferences.fontFamily,
-        font_size: preferences.fontSize,
-        line_spacing: preferences.lineSpacing,
-        letter_spacing: preferences.letterSpacing,
-        lead_bold: preferences.leadBold,
-        group_size: preferences.groupSize,
-        lang_hint: preferences.langHint,
-      });
+      await upsertPreferences(preferencesToDbPayload(preferences, me.id));
       toast.success('Preferences saved');
     } catch {
       toast.error('Failed to save preferences');
@@ -59,280 +36,94 @@ export function Toolbar({ originalText }: ToolbarProps) {
     }
   };
 
-  // Cleanup AI audio on unmount
-  useEffect(() => {
-    return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.src = '';
-      }
-      if (currentObjectUrlRef.current) {
-        URL.revokeObjectURL(currentObjectUrlRef.current);
-      }
-    };
-  }, []);
-
-  /** Split text into chunks of at most maxLen chars, breaking at word boundaries. */
-  const splitIntoChunks = (text: string, maxLen = 4000): string[] => {
-    const chunks: string[] = [];
-    let remaining = text;
-    while (remaining.length > maxLen) {
-      let splitAt = remaining.lastIndexOf(' ', maxLen);
-      if (splitAt <= 0) splitAt = maxLen;
-      chunks.push(remaining.slice(0, splitAt).trim());
-      remaining = remaining.slice(splitAt).trim();
-    }
-    if (remaining.length > 0) chunks.push(remaining);
-    return chunks;
-  };
-
-  /** Fetch and play the next chunk in the queue. */
-  const playNextChunk = async (rate: number) => {
-    const chunk = chunksRef.current.shift();
-    if (!chunk) {
-      setTtsState('idle');
-      return;
-    }
-
-    try {
-      const objectUrl = await synthesizeSpeech(chunk);
-      currentObjectUrlRef.current = objectUrl;
-
-      const audio = new Audio(objectUrl);
-      audio.playbackRate = rate;
-      audioRef.current = audio;
-
-      audio.onended = () => {
-        URL.revokeObjectURL(objectUrl);
-        currentObjectUrlRef.current = null;
-        audioRef.current = null;
-        playNextChunk(rate);
-      };
-
-      audio.onerror = () => {
-        URL.revokeObjectURL(objectUrl);
-        currentObjectUrlRef.current = null;
-        audioRef.current = null;
-        toast.error('Text-to-speech error occurred');
-        setTtsState('idle');
-      };
-
-      await audio.play();
-      setTtsState('playing');
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Text-to-speech error occurred');
-      setTtsState('idle');
-    }
-  };
-
-  const handlePlay = async () => {
-    if (!originalText.trim()) {
-      toast.error('No text to read');
-      return;
-    }
-
-    if (ttsState === 'paused' && audioRef.current) {
-      audioRef.current.playbackRate = speechRate;
-      await audioRef.current.play();
-      setTtsState('playing');
-      return;
-    }
-
-    const normalized = normalize(originalText);
-    chunksRef.current = splitIntoChunks(normalized);
-    await playNextChunk(speechRate);
-  };
-
-  const handlePause = () => {
-    if (audioRef.current && ttsState === 'playing') {
-      audioRef.current.pause();
-      setTtsState('paused');
-    }
-  };
-
-  const handleStop = () => {
-    chunksRef.current = [];
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.src = '';
-      audioRef.current = null;
-    }
-    if (currentObjectUrlRef.current) {
-      URL.revokeObjectURL(currentObjectUrlRef.current);
-      currentObjectUrlRef.current = null;
-    }
-    setTtsState('idle');
-  };
-
   return (
     <div className="space-y-6 p-4 bg-card rounded-lg border h-fit sticky top-4">
       <h2 className="text-lg font-semibold">Reading Controls</h2>
 
-      {/* Font Family */}
-      <div className="space-y-2">
-        <Label htmlFor="font-family">Font</Label>
-        <Select
-          value={preferences.fontFamily}
-          onValueChange={(value: FontFamily) => setPreferences({ fontFamily: value })}
-        >
-          <SelectTrigger id="font-family" className="bg-background">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className="z-50 bg-popover">
-            <SelectItem value="Lexend">Lexend</SelectItem>
-            <SelectItem value="Comic Neue">Comic Neue</SelectItem>
-            <SelectItem value="Atkinson Hyperlegible">Atkinson Hyperlegible</SelectItem>
-            <SelectItem value="Arial">Arial</SelectItem>
-            <SelectItem value="Verdana">Verdana</SelectItem>
-            <SelectItem value="System">System Default</SelectItem>
-          </SelectContent>
-        </Select>
-        <p className="text-xs text-muted-foreground">
-          All fonts optimized for dyslexia-friendly reading
-        </p>
-      </div>
+      <FontFamilySelect
+        id="toolbar-font-family"
+        value={preferences.fontFamily}
+        onValueChange={(value) => setPreferences({ fontFamily: value })}
+      />
 
-      {/* Font Size */}
-      <div className="space-y-2">
-        <div className="flex justify-between">
-          <Label htmlFor="font-size">Font Size</Label>
-          <span className="text-sm text-muted-foreground">{preferences.fontSize}px</span>
-        </div>
-        <Slider
-          id="font-size"
-          min={14}
-          max={28}
-          step={1}
-          value={[preferences.fontSize]}
-          onValueChange={([value]) => setPreferences({ fontSize: value })}
-        />
-      </div>
+      <SliderControl
+        id="toolbar-font-size"
+        label="Font Size"
+        value={preferences.fontSize}
+        min={14}
+        max={28}
+        step={1}
+        displayValue={`${preferences.fontSize}px`}
+        onValueChange={(value) => setPreferences({ fontSize: value })}
+      />
 
-      {/* Line Spacing */}
-      <div className="space-y-2">
-        <div className="flex justify-between">
-          <Label htmlFor="line-spacing">Line Spacing</Label>
-          <span className="text-sm text-muted-foreground">{preferences.lineSpacing.toFixed(1)}</span>
-        </div>
-        <Slider
-          id="line-spacing"
-          min={1.2}
-          max={2.5}
-          step={0.1}
-          value={[preferences.lineSpacing]}
-          onValueChange={([value]) => setPreferences({ lineSpacing: value })}
-        />
-      </div>
+      <SliderControl
+        id="toolbar-line-spacing"
+        label="Line Spacing"
+        value={preferences.lineSpacing}
+        min={1.2}
+        max={2.5}
+        step={0.1}
+        displayValue={preferences.lineSpacing.toFixed(1)}
+        onValueChange={(value) => setPreferences({ lineSpacing: value })}
+      />
 
-      {/* Letter Spacing */}
-      <div className="space-y-2">
-        <div className="flex justify-between">
-          <Label htmlFor="letter-spacing">Letter Spacing</Label>
-          <span className="text-sm text-muted-foreground">{preferences.letterSpacing.toFixed(2)}em</span>
-        </div>
-        <Slider
-          id="letter-spacing"
-          min={0}
-          max={0.15}
-          step={0.01}
-          value={[preferences.letterSpacing]}
-          onValueChange={([value]) => setPreferences({ letterSpacing: value })}
-        />
-      </div>
+      <SliderControl
+        id="toolbar-letter-spacing"
+        label="Letter Spacing"
+        value={preferences.letterSpacing}
+        min={0}
+        max={0.15}
+        step={0.01}
+        displayValue={`${preferences.letterSpacing.toFixed(2)}em`}
+        onValueChange={(value) => setPreferences({ letterSpacing: value })}
+      />
 
-      {/* Lead Bold */}
-      <div className="space-y-2">
-        <Label>Lead Bold Strength</Label>
-        <RadioGroup
-          value={preferences.leadBold}
-          onValueChange={(value: LeadBoldStrength) => setPreferences({ leadBold: value })}
-        >
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="off" id="bold-off" />
-            <Label htmlFor="bold-off" className="font-normal cursor-pointer">Off</Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="short" id="bold-short" />
-            <Label htmlFor="bold-short" className="font-normal cursor-pointer">Short</Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="medium" id="bold-medium" />
-            <Label htmlFor="bold-medium" className="font-normal cursor-pointer">Medium</Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="strong" id="bold-strong" />
-            <Label htmlFor="bold-strong" className="font-normal cursor-pointer">Strong</Label>
-          </div>
-        </RadioGroup>
-      </div>
+      <LeadBoldRadioGroup
+        idPrefix="toolbar-bold"
+        value={preferences.leadBold}
+        onValueChange={(value) => setPreferences({ leadBold: value })}
+      />
 
-      {/* Group Size */}
-      <div className="space-y-2">
-        <div className="flex justify-between">
-          <Label htmlFor="group-size">Group Color Size</Label>
-          <span className="text-sm text-muted-foreground">{preferences.groupSize} words</span>
-        </div>
-        <Slider
-          id="group-size"
-          min={2}
-          max={7}
-          step={1}
-          value={[preferences.groupSize]}
-          onValueChange={([value]) => setPreferences({ groupSize: value })}
-        />
-      </div>
+      <SliderControl
+        id="toolbar-group-size"
+        label="Group Color Size"
+        value={preferences.groupSize}
+        min={2}
+        max={7}
+        step={1}
+        displayValue={`${preferences.groupSize} words`}
+        onValueChange={(value) => setPreferences({ groupSize: value })}
+      />
 
-      {/* Language Hint */}
-      <div className="space-y-2">
-        <Label>Language Hint</Label>
-        <RadioGroup
-          value={preferences.langHint}
-          onValueChange={(value: LanguageHint) => setPreferences({ langHint: value })}
-        >
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="auto" id="lang-auto" />
-            <Label htmlFor="lang-auto" className="font-normal cursor-pointer">Auto-detect</Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="en" id="lang-en" />
-            <Label htmlFor="lang-en" className="font-normal cursor-pointer">English</Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="ar" id="lang-ar" />
-            <Label htmlFor="lang-ar" className="font-normal cursor-pointer">Arabic</Label>
-          </div>
-        </RadioGroup>
-      </div>
+      <LangHintRadioGroup
+        idPrefix="toolbar-lang"
+        value={preferences.langHint}
+        onValueChange={(value) => setPreferences({ langHint: value })}
+      />
 
-      {/* Save Preferences */}
       {me && (
         <Button onClick={handleSavePreferences} disabled={saving} className="w-full" size="sm">
           {saving ? 'Saving...' : 'Save Preferences'}
         </Button>
       )}
 
-      {/* Speech Rate */}
-      <div className="space-y-2">
-        <div className="flex justify-between">
-          <Label htmlFor="speech-rate">Speech Rate</Label>
-          <span className="text-sm text-muted-foreground">{speechRate.toFixed(1)}x</span>
-        </div>
-        <Slider
-          id="speech-rate"
-          min={0.5}
-          max={2.0}
-          step={0.1}
-          value={[speechRate]}
-          onValueChange={([value]) => setSpeechRate(value)}
-        />
-      </div>
+      <SliderControl
+        id="toolbar-speech-rate"
+        label="Speech Rate"
+        value={speechRate}
+        min={0.5}
+        max={2.0}
+        step={0.1}
+        displayValue={`${speechRate.toFixed(1)}x`}
+        onValueChange={setSpeechRate}
+      />
 
-      {/* TTS Controls */}
       <div className="space-y-2">
         <Label>Read Aloud</Label>
         <div className="flex gap-2">
           <Button
-            onClick={handlePlay}
+            onClick={play}
             disabled={ttsState === 'playing'}
             size="sm"
             className="flex-1"
@@ -342,7 +133,7 @@ export function Toolbar({ originalText }: ToolbarProps) {
             {ttsState === 'paused' ? 'Resume' : 'Play'}
           </Button>
           <Button
-            onClick={handlePause}
+            onClick={pause}
             disabled={ttsState !== 'playing'}
             size="sm"
             variant="outline"
@@ -351,7 +142,7 @@ export function Toolbar({ originalText }: ToolbarProps) {
             <Pause className="h-4 w-4" />
           </Button>
           <Button
-            onClick={handleStop}
+            onClick={stop}
             disabled={ttsState === 'idle'}
             size="sm"
             variant="outline"

@@ -53,8 +53,8 @@ export async function extractPdfTextViaBackend(file: File): Promise<string> {
 export async function extractPdfText(file: File): Promise<string> {
   try {
     return await extractPdfTextViaBackend(file);
-  } catch {
-    // Fall back to client-side extraction
+  } catch (backendError) {
+    console.warn('Backend PDF extraction unavailable, falling back to client-side:', backendError);
   }
   try {
     // Read file as array buffer

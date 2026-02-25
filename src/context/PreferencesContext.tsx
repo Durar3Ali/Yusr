@@ -1,22 +1,10 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Preferences, Theme, FontFamily, LeadBoldStrength, LanguageHint } from '@/types';
+import type { Preferences } from '@/types';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
 import { getMe } from '@/lib/api/users';
-import { getPreferences } from '@/lib/api/preferences';
-
-const STORAGE_KEY = 'dyslexia-reader-preferences';
-
-const defaultPreferences: Preferences = {
-  fontFamily: 'Lexend',
-  fontSize: 18,
-  lineSpacing: 1.8,
-  letterSpacing: 0.05,
-  theme: 'light-yellow',
-  leadBold: 'medium',
-  groupSize: 3,
-  langHint: 'auto',
-};
+import { getPreferences, dbPreferencesToApp } from '@/lib/api/preferences';
+import { STORAGE_KEYS, DEFAULT_PREFERENCES } from '@/lib/constants';
 
 interface PreferencesContextType {
   preferences: Preferences;
@@ -27,24 +15,22 @@ interface PreferencesContextType {
 const PreferencesContext = createContext<PreferencesContextType | undefined>(undefined);
 
 export function PreferencesProvider({ children }: { children: ReactNode }) {
-  // Always start with defaults; the useEffect below will load from localStorage
-  // only if a valid session exists, avoiding stale values for logged-out users.
-  const [preferences, setPreferencesState] = useState<Preferences>(defaultPreferences);
+  const [preferences, setPreferencesState] = useState<Preferences>(DEFAULT_PREFERENCES);
   const { user } = useAuth();
 
   // On mount: check session — only load localStorage if user is logged in
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) {
-        localStorage.removeItem(STORAGE_KEY);
-        setPreferencesState(defaultPreferences);
+        localStorage.removeItem(STORAGE_KEYS.PREFERENCES);
+        setPreferencesState(DEFAULT_PREFERENCES);
         return;
       }
       try {
-        const stored = localStorage.getItem(STORAGE_KEY);
+        const stored = localStorage.getItem(STORAGE_KEYS.PREFERENCES);
         if (stored) {
           const parsed = JSON.parse(stored);
-          setPreferencesState({ ...defaultPreferences, ...parsed });
+          setPreferencesState({ ...DEFAULT_PREFERENCES, ...parsed });
         }
       } catch (error) {
         console.error('Failed to load preferences from localStorage:', error);
@@ -59,17 +45,7 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
       .then(me => (me ? getPreferences(me.id) : null))
       .then(data => {
         if (!data) return;
-        const fontFamily = data.font_family === 'System Default' ? 'System' : (data.font_family as FontFamily);
-        setPreferencesState({
-          theme: data.theme as Theme,
-          fontFamily,
-          fontSize: data.font_size,
-          lineSpacing: data.line_spacing,
-          letterSpacing: data.letter_spacing,
-          leadBold: data.lead_bold as LeadBoldStrength,
-          groupSize: data.group_size,
-          langHint: data.lang_hint as LanguageHint,
-        });
+        setPreferencesState(dbPreferencesToApp(data));
       })
       .catch(() => {
         // Leave current state (defaults or localStorage) on failure
@@ -80,8 +56,8 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_OUT') {
-        localStorage.removeItem(STORAGE_KEY);
-        setPreferencesState(defaultPreferences);
+        localStorage.removeItem(STORAGE_KEYS.PREFERENCES);
+        setPreferencesState(DEFAULT_PREFERENCES);
       }
     });
     return () => subscription.unsubscribe();
@@ -90,7 +66,7 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
   // Save to localStorage whenever preferences change
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(preferences));
+      localStorage.setItem(STORAGE_KEYS.PREFERENCES, JSON.stringify(preferences));
     } catch (error) {
       console.error('Failed to save preferences to localStorage:', error);
     }
@@ -106,7 +82,7 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
   };
 
   const resetPreferences = () => {
-    setPreferencesState(defaultPreferences);
+    setPreferencesState(DEFAULT_PREFERENCES);
   };
 
   return (

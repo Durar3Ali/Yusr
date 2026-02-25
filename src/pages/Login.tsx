@@ -7,18 +7,16 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BookOpen, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
-import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
-
-const getUserIP = async (): Promise<string> => {
-  const res = await fetch('https://api.ipify.org?format=json');
-  const data = await res.json();
-  return data.ip;
-};
+import {
+  getUserIP,
+  checkRateLimit,
+  recordFailedAttempt,
+  resetRateLimit,
+  signIn,
+} from '@/lib/api/auth';
 
 export default function Login() {
-  console.log('Login component rendering...');
-  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -40,10 +38,10 @@ export default function Login() {
       try {
         const ip = await getUserIP();
         if (!ip) return;
-        const { data: blocked } = await supabase.rpc('check_rate_limit', { p_email: email, p_ip: ip });
+        const blocked = await checkRateLimit(email, ip);
         if (blocked) setIsRateLimited(true);
       } catch {
-        // silently ignore — do not block the user if the check fails
+        // Silently ignore — do not block the user if the check fails
       }
     };
     checkBlock();
@@ -61,34 +59,30 @@ export default function Login() {
     try {
       const ip = await getUserIP();
 
-      // Check DB block before attempting login
-      const { data: blocked } = await supabase.rpc('check_rate_limit', { p_email: email, p_ip: ip });
+      const blocked = await checkRateLimit(email, ip);
       if (blocked) {
         setIsRateLimited(true);
         setLoading(false);
         return;
       }
 
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { error } = await signIn(email, password);
 
       if (error) {
-        // Record the failed attempt in DB
-        await supabase.rpc('record_failed_attempt', { p_email: email, p_ip: ip });
+        await recordFailedAttempt(email, ip);
 
-        // Check if the user is now blocked after this attempt
-        const { data: nowBlocked } = await supabase.rpc('check_rate_limit', { p_email: email, p_ip: ip });
+        const nowBlocked = await checkRateLimit(email, ip);
         if (nowBlocked) {
           setIsRateLimited(true);
         } else {
           toast.error(error.message);
         }
       } else {
-        // Reset the counter on successful login
-        await supabase.rpc('reset_rate_limit', { p_email: email, p_ip: ip });
+        await resetRateLimit(email, ip);
         toast.success('Login successful!');
         navigate('/read');
       }
-    } catch (error) {
+    } catch {
       toast.error('An unexpected error occurred. Please try again.');
     } finally {
       setLoading(false);
@@ -139,7 +133,13 @@ export default function Login() {
                     onClick={() => setShowPassword((p) => !p)}
                     disabled={password.length === 0}
                     className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring rounded p-1 disabled:opacity-50 disabled:pointer-events-none"
-                    aria-label={password.length === 0 ? 'Show password (enter text first)' : showPassword ? 'Hide password' : 'Show password'}
+                    aria-label={
+                      password.length === 0
+                        ? 'Show password (enter text first)'
+                        : showPassword
+                        ? 'Hide password'
+                        : 'Show password'
+                    }
                     tabIndex={0}
                   >
                     {showPassword ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
@@ -154,12 +154,7 @@ export default function Login() {
                   Too many failed attempts. Please try again after 10 minutes.
                 </p>
               )}
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                asChild
-              >
+              <Button type="button" variant="outline" className="w-full" asChild>
                 <Link to="/read">Continue as Guest</Link>
               </Button>
             </form>

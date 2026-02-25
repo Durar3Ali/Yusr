@@ -7,8 +7,9 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BookOpen, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
-import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
+import { signUp } from '@/lib/api/auth';
+import { validatePassword } from '@/lib/validation';
 
 export default function Signup() {
   const [name, setName] = useState('');
@@ -28,37 +29,13 @@ export default function Signup() {
     }
   }, [user, navigate]);
 
-  // When password field is cleared, reset eye to closed (hidden)
+  // When password fields are cleared, reset eye icons to closed
   useEffect(() => {
     if (password.length === 0) setShowPassword(false);
   }, [password]);
   useEffect(() => {
     if (confirmPassword.length === 0) setShowConfirmPassword(false);
   }, [confirmPassword]);
-
-  const validatePassword = (password: string): { isValid: boolean; message: string } => {
-    if (password.length < 6) {
-      return { isValid: false, message: 'Password must be at least 6 characters' };
-    }
-
-    const hasLetter = /[a-zA-Z]/.test(password);
-    const hasNumber = /[0-9]/.test(password);
-    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
-
-    if (!hasLetter) {
-      return { isValid: false, message: 'Password must contain at least one letter' };
-    }
-
-    if (!hasNumber) {
-      return { isValid: false, message: 'Password must contain at least one number' };
-    }
-
-    if (!hasSpecialChar) {
-      return { isValid: false, message: 'Password must contain at least one special character' };
-    }
-
-    return { isValid: true, message: 'Password is valid' };
-  };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,17 +54,9 @@ export default function Signup() {
     setLoading(true);
 
     try {
-      const redirectUrl = `${window.location.origin}/read`;
-      
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: redirectUrl,
-          data: {
-            name,
-          },
-        },
+      const { error } = await signUp(email, password, {
+        redirectTo: `${window.location.origin}/read`,
+        name,
       });
 
       if (error) {
@@ -96,7 +65,7 @@ export default function Signup() {
         toast.success('Account created! Please check your email to verify your account.');
         navigate('/read');
       }
-    } catch (error) {
+    } catch {
       toast.error('An unexpected error occurred. Please try again.');
     } finally {
       setLoading(false);
@@ -159,7 +128,13 @@ export default function Signup() {
                     onClick={() => setShowPassword((p) => !p)}
                     disabled={password.length === 0}
                     className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring rounded p-1 disabled:opacity-50 disabled:pointer-events-none"
-                    aria-label={password.length === 0 ? 'Show password (enter text first)' : showPassword ? 'Hide password' : 'Show password'}
+                    aria-label={
+                      password.length === 0
+                        ? 'Show password (enter text first)'
+                        : showPassword
+                        ? 'Hide password'
+                        : 'Show password'
+                    }
                     tabIndex={0}
                   >
                     {showPassword ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
@@ -187,22 +162,27 @@ export default function Signup() {
                     onClick={() => setShowConfirmPassword((p) => !p)}
                     disabled={confirmPassword.length === 0}
                     className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring rounded p-1 disabled:opacity-50 disabled:pointer-events-none"
-                    aria-label={confirmPassword.length === 0 ? 'Show password (enter text first)' : showConfirmPassword ? 'Hide password' : 'Show password'}
+                    aria-label={
+                      confirmPassword.length === 0
+                        ? 'Show password (enter text first)'
+                        : showConfirmPassword
+                        ? 'Hide password'
+                        : 'Show password'
+                    }
                     tabIndex={0}
                   >
-                    {showConfirmPassword ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                    {showConfirmPassword ? (
+                      <Eye className="h-4 w-4" />
+                    ) : (
+                      <EyeOff className="h-4 w-4" />
+                    )}
                   </button>
                 </div>
               </div>
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? 'Creating account...' : 'Create Account'}
               </Button>
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                asChild
-              >
+              <Button type="button" variant="outline" className="w-full" asChild>
                 <Link to="/read">Continue as Guest</Link>
               </Button>
             </form>
