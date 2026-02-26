@@ -1,12 +1,17 @@
 import { createContext, useContext, useState, ReactNode } from 'react';
 
+export interface PdfState {
+  file: File;
+  name: string;
+  size: number;
+  url?: string;
+}
+
 interface TextContextValue {
   originalText: string;
   setOriginalText: (text: string) => void;
-  pdfFile: File | null;
-  setPdfFile: (file: File | null) => void;
-  pdfMetadata: { name: string; size: number; url?: string } | null;
-  setPdfMetadata: (metadata: { name: string; size: number; url?: string } | null) => void;
+  pdfState: PdfState | null;
+  setPdfState: (state: PdfState | null) => void;
   clearDocument: () => void;
 }
 
@@ -14,13 +19,11 @@ const TextContext = createContext<TextContextValue | undefined>(undefined);
 
 export function TextProvider({ children }: { children: ReactNode }) {
   const [originalText, setOriginalText] = useState('');
-  const [pdfFile, setPdfFile] = useState<File | null>(null);
-  const [pdfMetadata, setPdfMetadata] = useState<{ name: string; size: number; url?: string } | null>(null);
+  const [pdfState, setPdfState] = useState<PdfState | null>(null);
 
   const clearDocument = () => {
     setOriginalText('');
-    setPdfFile(null);
-    setPdfMetadata(null);
+    setPdfState(null);
   };
 
   return (
@@ -28,10 +31,8 @@ export function TextProvider({ children }: { children: ReactNode }) {
       value={{
         originalText,
         setOriginalText,
-        pdfFile,
-        setPdfFile,
-        pdfMetadata,
-        setPdfMetadata,
+        pdfState,
+        setPdfState,
         clearDocument,
       }}
     >

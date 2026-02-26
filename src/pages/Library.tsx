@@ -15,7 +15,7 @@ import { extractPdfText } from '@/lib/pdf';
 export default function LibraryPage() {
   const navigate = useNavigate();
   const { me, loading: authLoading } = useMe();
-  const { setOriginalText, setPdfFile, setPdfMetadata } = useText();
+  const { setOriginalText, setPdfState } = useText();
 
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(false);
@@ -59,11 +59,11 @@ export default function LibraryPage() {
       const text = await extractPdfText(file);
 
       setOriginalText(text);
-      setPdfFile(file);
-      setPdfMetadata({
+      setPdfState({
+        file,
         name: `${doc.title}.pdf`,
         size: file.size,
-        url: doc.file_path,
+        url: doc.file_path ?? undefined,
       });
 
       toast.success(`"${doc.title}" loaded — opening reader`);

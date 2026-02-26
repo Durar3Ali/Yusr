@@ -16,7 +16,7 @@ interface TextUploaderProps {
 }
 
 export function TextUploader({ onTextChange, originalText }: TextUploaderProps) {
-  const { setPdfFile, setPdfMetadata } = useText();
+  const { setPdfState } = useText();
   const [fileName, setFileName] = useState<string>('');
   const [fileSize, setFileSize] = useState<number>(0);
   const [status, setStatus] = useState<'idle' | 'extracting' | 'success' | 'error'>('idle');
@@ -39,17 +39,12 @@ export function TextUploader({ onTextChange, originalText }: TextUploaderProps) 
     setStatus('extracting');
 
     try {
-      // Extract text from PDF
       const text = await extractPdfText(file);
       onTextChange(text);
       setStatus('success');
 
-      // Store PDF file in context for chatbot
-      setPdfFile(file);
-      setPdfMetadata({
-        name: file.name,
-        size: file.size,
-      });
+      // Store initial PDF state (no URL yet)
+      setPdfState({ file, name: file.name, size: file.size });
 
       // If user is logged in, upload PDF and save document to Supabase
       if (authUser && me) {
@@ -60,14 +55,10 @@ export function TextUploader({ onTextChange, originalText }: TextUploaderProps) 
             title: file.name.replace(/\.pdf$/i, ''),
             file_path: filePath,
           });
-          
-          // Update metadata with URL
-          setPdfMetadata({
-            name: file.name,
-            size: file.size,
-            url: filePath,
-          });
-          
+
+          // Update PDF state with the remote storage URL
+          setPdfState({ file, name: file.name, size: file.size, url: filePath });
+
           toast.success('PDF uploaded and saved to your library');
         } catch (uploadError) {
           console.error('Failed to upload PDF:', uploadError);
@@ -82,7 +73,6 @@ export function TextUploader({ onTextChange, originalText }: TextUploaderProps) 
       console.error('PDF extraction failed:', error);
     }
 
-    // Reset file input
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -93,8 +83,7 @@ export function TextUploader({ onTextChange, originalText }: TextUploaderProps) 
     setFileName('');
     setFileSize(0);
     setStatus('idle');
-    setPdfFile(null);
-    setPdfMetadata(null);
+    setPdfState(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -105,7 +94,7 @@ export function TextUploader({ onTextChange, originalText }: TextUploaderProps) 
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
   };
 
   return (

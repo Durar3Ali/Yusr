@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import type { Preferences } from '@/types';
-import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
 import { getMe } from '@/lib/api/users';
 import { getPreferences, dbPreferencesToApp } from '@/lib/api/preferences';
@@ -18,52 +17,38 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
   const [preferences, setPreferencesState] = useState<Preferences>(DEFAULT_PREFERENCES);
   const { user } = useAuth();
 
-  // On mount: check session — only load localStorage if user is logged in
+  // Whenever the auth user changes, sync preferences from the appropriate source.
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) {
-        localStorage.removeItem(STORAGE_KEYS.PREFERENCES);
-        setPreferencesState(DEFAULT_PREFERENCES);
-        return;
-      }
-      try {
-        const stored = localStorage.getItem(STORAGE_KEYS.PREFERENCES);
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          setPreferencesState({ ...DEFAULT_PREFERENCES, ...parsed });
-        }
-      } catch (error) {
-        console.error('Failed to load preferences from localStorage:', error);
-      }
-    });
-  }, []);
+    if (!user) {
+      // User signed out (or was never signed in) — clear persisted prefs and reset to defaults.
+      localStorage.removeItem(STORAGE_KEYS.PREFERENCES);
+      setPreferencesState(DEFAULT_PREFERENCES);
+      return;
+    }
 
-  // When user is logged in, fetch and apply server preferences app-wide
-  useEffect(() => {
-    if (!user) return;
+    // User is now signed in — try localStorage first (instant), then sync from DB.
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.PREFERENCES);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        setPreferencesState({ ...DEFAULT_PREFERENCES, ...parsed });
+      }
+    } catch (error) {
+      console.error('Failed to load preferences from localStorage:', error);
+    }
+
     getMe()
-      .then(me => (me ? getPreferences(me.id) : null))
-      .then(data => {
+      .then((me) => (me ? getPreferences(me.id) : null))
+      .then((data) => {
         if (!data) return;
         setPreferencesState(dbPreferencesToApp(data));
       })
       .catch(() => {
-        // Leave current state (defaults or localStorage) on failure
+        // Leave localStorage / default state on DB failure — non-fatal.
       });
   }, [user]);
 
-  // On SIGNED_OUT: reset in-memory state and clear localStorage immediately
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_OUT') {
-        localStorage.removeItem(STORAGE_KEYS.PREFERENCES);
-        setPreferencesState(DEFAULT_PREFERENCES);
-      }
-    });
-    return () => subscription.unsubscribe();
-  }, []);
-
-  // Save to localStorage whenever preferences change
+  // Persist preferences to localStorage whenever they change.
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEYS.PREFERENCES, JSON.stringify(preferences));
@@ -72,13 +57,13 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
     }
   }, [preferences]);
 
-  // Apply theme to document
+  // Apply theme to the document root.
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', preferences.theme);
   }, [preferences.theme]);
 
   const setPreferences = (partial: Partial<Preferences>) => {
-    setPreferencesState(prev => ({ ...prev, ...partial }));
+    setPreferencesState((prev) => ({ ...prev, ...partial }));
   };
 
   const resetPreferences = () => {

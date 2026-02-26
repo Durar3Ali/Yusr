@@ -29,18 +29,24 @@ function splitIntoChunks(text: string, maxLen = 4000): string[] {
 }
 
 /**
- * Encapsulates text-to-speech playback using the backend OpenAI TTS endpoint.
+ * Encapsulates text-to-speech playback.
  * Handles chunking, sequential playback, pause/resume/stop, and resource cleanup.
+ *
+ * @param text - The text to synthesize and play.
+ * @param synthesize - Optional synthesize function; defaults to the OpenAI TTS backend.
+ *   Pass a custom implementation to swap the TTS provider without changing this hook.
  */
-export function useTTS(text: string): UseTTSReturn {
+export function useTTS(
+  text: string,
+  synthesize: (text: string) => Promise<string> = synthesizeSpeech
+): UseTTSReturn {
   const [state, setState] = useState<TTSState>('idle');
   const [speechRate, setSpeechRate] = useState(1.0);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const chunksRef = useRef<string[]>([]);
   const currentObjectUrlRef = useRef<string | null>(null);
-  // Keep a stable ref to speechRate so the async playback chain always reads
-  // the latest value without needing to restart.
+  // Stable ref so the async playback chain always reads the latest rate without restarting.
   const speechRateRef = useRef(speechRate);
   useEffect(() => {
     speechRateRef.current = speechRate;
@@ -67,7 +73,7 @@ export function useTTS(text: string): UseTTSReturn {
     }
 
     try {
-      const objectUrl = await synthesizeSpeech(chunk);
+      const objectUrl = await synthesize(chunk);
       currentObjectUrlRef.current = objectUrl;
 
       const audio = new Audio(objectUrl);
