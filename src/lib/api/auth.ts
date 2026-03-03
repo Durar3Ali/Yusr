@@ -1,67 +1,69 @@
+/**
+ * Supabase wrapper
+ */
 import type { AuthError } from '@supabase/supabase-js';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/lib/supabaseClient'; //the client instance we created in Layer 1.
 
-/** Fetch the client's public IP address via ipify. */
+/**implements rate limiting mechanism using 
+ * Supabase remote procedure calls (RPC)*/ 
+
+//get the user's IP address via ipify.
 export async function getUserIP(): Promise<string> {
   const res = await fetch('https://api.ipify.org?format=json');
   const data = await res.json();
   return data.ip as string;
 }
 
-/**
- * Check whether the given email + IP combination is currently rate-limited.
- * Returns true if the user should be blocked, false otherwise.
- */
+//T or F the given email + IP is rate-limited?
 export async function checkRateLimit(email: string, ip: string): Promise<boolean> {
   const { data } = await supabase.rpc('check_rate_limit', { p_email: email, p_ip: ip });
   return Boolean(data);
 }
 
-/** Record a failed login attempt for the given email + IP. */
+// increasing the count on failed login attempts
 export async function recordFailedAttempt(email: string, ip: string): Promise<void> {
   await supabase.rpc('record_failed_attempt', { p_email: email, p_ip: ip });
 }
 
-/** Reset the failed-attempt counter on successful login. */
+// Reset the failed-attempt counter on successful login.
 export async function resetRateLimit(email: string, ip: string): Promise<void> {
   await supabase.rpc('reset_rate_limit', { p_email: email, p_ip: ip });
 }
 
-export interface SignInResult {
-  error: AuthError | null;
+
+/** Sign in & sign up functionality */
+export interface SignInResult { //the app always knows what to expect
+  error: AuthError | null; //an error object or null if successful
 }
 
-/**
- * Sign in with email + password.
- * Also handles rate-limit recording: records a failed attempt on error,
- * resets the counter on success.
- */
+// Sign in with email + password.
 export async function signIn(email: string, password: string): Promise<SignInResult> {
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   return { error: error ?? null };
 }
 
+// Sign up
 export interface SignUpOptions {
   redirectTo?: string;
-  name?: string;
+  name: string;
 }
 
 export interface SignUpResult {
   error: AuthError | null;
 }
 
-/** Sign up with email + password, optionally passing a display name. */
+// Sign up with email, password, & name
 export async function signUp(
   email: string,
   password: string,
-  options: SignUpOptions = {}
+  options: SignUpOptions 
 ): Promise<SignUpResult> {
   const { error } = await supabase.auth.signUp({
     email,
     password,
     options: {
       emailRedirectTo: options.redirectTo,
-      data: options.name ? { name: options.name } : undefined,
+      data:  { name: options.name }
     },
   });
   return { error: error ?? null };

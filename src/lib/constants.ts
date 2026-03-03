@@ -1,3 +1,8 @@
+/** 
+ * The SSOT of what preferences exist 
+ * & what their defaults are.
+ * */
+
 import type { FontFamily, Theme, LeadBoldStrength, LanguageHint, Preferences } from '@/types';
 
 export const STORAGE_KEYS = {

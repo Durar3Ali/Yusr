@@ -8,18 +8,23 @@ from pydantic import BaseModel
 from dotenv import load_dotenv
 from openai import OpenAI
 
+#load the api key from the .env
 load_dotenv()
-_openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+_openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY")) 
 
-# Arabic combining diacritical marks (harakat, shadda, tanwin, etc.).
-# These are sometimes output by PyMuPDF as isolated tokens with a space
-# before them when the PDF stores the glyph at an offset from its base letter.
-_COMBINING_RE = re.compile(
+# Arabic combining diacritical marks
+ARABIC_DIACRITICAL_MARKS = re.compile(
     r" +([\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06DC\u06DF-\u06E4\u06E7\u06E8\u06EA-\u06ED]+)"
 )
 
-app = FastAPI(title="Readwell PDF Extraction")
+'''
+create the backend server
+'''
+app = FastAPI(title="Yusr Backend")
 
+'''
+Middleware (CORS)
+'''
 _cors_origins = [o.strip() for o in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")]
 
 app.add_middleware(
@@ -30,28 +35,34 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
+'''
+PDF Text Extraction Implementation
+'''
 def _extract_page_text(page: fitz.Page) -> str:
     # get_text("text") lets PyMuPDF apply its full Unicode/Bidi pipeline,
-    # which correctly handles Arabic ligatures and RTL reordering.
-    # sort=True orders spans top-to-bottom so multi-column pages read correctly.
+    # sort=True tells PyMuPDF to read the text in the order it appears on the page
     raw = page.get_text("text", sort=True)
-    lines: list[str] = []
+    
+    lines: list[str] = [] #to hold each line of text after processing
     for line in raw.splitlines():
-        # Re-attach any Arabic combining diacritical mark that was emitted as
-        # a separate token with a preceding space (a known PyMuPDF / PDF
-        # encoding artefact for certain Arabic fonts).
-        line = _COMBINING_RE.sub(r"\1", line).strip()
+        line = ARABIC_DIACRITICAL_MARKS.sub(r"\1", line).strip()
         if line:
             lines.append(line)
     return "\n".join(lines)
 
 
-class TTSRequest(BaseModel):
+
+'''
+Text to Speech Implementation
+'''
+class TTSRequest(BaseModel): #inherits from Pydantic's BaseModel
     text: str
     voice: str = 'alloy'
 
 
+'''
+The endpoints 
+'''
 @app.post("/api/tts")
 async def text_to_speech(req: TTSRequest):
     if not req.text.strip():

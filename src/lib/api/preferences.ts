@@ -1,8 +1,16 @@
+/**
+ * This module translates between JavaScript’s camelCase and PostgreSQL’s snake_case
+ * Alos, managing the "Empty State", where a user exists but hasn't saved preferences yet
+ * This's why there're 2 separate functions for mapping to/from the DB:
+ * dbPreferencesToApp() & preferencesToDbPayload()
+ */
 import { supabase } from '@/lib/supabaseClient';
 import type { Preferences } from '@/types';
 import { DEFAULT_PREFERENCES } from '@/lib/constants';
 
-/** DB row shape — snake_case as stored in Supabase */
+/** 
+ * Define the schema for the preferences table in the DB
+*/
 export type DbPreferences = {
   font_family: string;
   font_size: number;
@@ -14,9 +22,10 @@ export type DbPreferences = {
   lang_hint: string;
 };
 
+
+
 /**
- * Map a DB preferences row to the app-level Preferences model.
- * Provides a single place to validate/cast DB strings to typed unions.
+ * From DB to app
  */
 export function dbPreferencesToApp(db: DbPreferences): Preferences {
   return {
@@ -32,9 +41,7 @@ export function dbPreferencesToApp(db: DbPreferences): Preferences {
 }
 
 /**
- * Build the DB upsert payload from app-level Preferences.
- * Centralises the camelCase → snake_case mapping so callers never
- * repeat it inline.
+ * From app to DB
  */
 export function preferencesToDbPayload(
   prefs: Preferences,
@@ -53,9 +60,12 @@ export function preferencesToDbPayload(
   };
 }
 
+
+
+
 /**
- * Get user's preferences from the preferences table.
- * Returns DEFAULT_PREFERENCES (as DbPreferences shape) if no row exists.
+ * 1) Get user's preferences from the preferences table.
+ * 2) Return DEFAULT_PREFERENCES if no row exists.
  */
 export async function getPreferences(userId: number): Promise<DbPreferences> {
   const { data, error } = await supabase
@@ -64,7 +74,7 @@ export async function getPreferences(userId: number): Promise<DbPreferences> {
     .eq('user_id', userId)
     .single();
 
-  // PGRST116 = no rows returned (user hasn't saved preferences yet)
+  // PGRST116 = no rows found(user hasn't saved preferences yet)
   if (error && error.code === 'PGRST116') {
     return {
       font_family: DEFAULT_PREFERENCES.fontFamily,
@@ -82,8 +92,12 @@ export async function getPreferences(userId: number): Promise<DbPreferences> {
   return data;
 }
 
+
+
+
+
 /**
- * Upsert (insert or update) user preferences
+ * Update or insert into the preferences table
  */
 export async function upsertPreferences(
   prefs: DbPreferences & { user_id: number }
