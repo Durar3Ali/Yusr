@@ -1,6 +1,5 @@
 import { Token, RenderOptions, LeadBoldStrength, LanguageHint } from '@/types';
 import { isArabicWord } from './rtl';
-import { directionFor } from './rtl';
 
 /**
  * Normalizes text by trimming, collapsing excess spaces, and normalizing newlines
@@ -22,7 +21,6 @@ export function normalize(text: string): string {
   normalized = normalized.replace(/\n{3,}/g, '\n\n');
 
   // Re-attach Arabic combining diacritical marks (harakat) to their host letter.
-  // PDF extractors often emit them as a separate span with a preceding space,
   normalized = normalized.replace(
     / +([\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06DC\u06DF-\u06E4\u06E7\u06E8\u06EA-\u06ED]+)/g,
     '$1'
@@ -132,7 +130,7 @@ export function leadBoldToken(
     const boldPart = effectiveWord.substring(0, boldLen);
     const rest = effectiveWord.substring(boldLen);
     
-    return `${prefix}<strong>${boldPart}</strong>${rest}`;
+    return `<strong>${prefix}${boldPart}</strong>${rest}`;
   } else {
     // English/Latin script
     const len = word.length;

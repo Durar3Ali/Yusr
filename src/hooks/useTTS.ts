@@ -1,3 +1,6 @@
+/**
+ * Hook that handles the audio state
+ */
 import { useState, useRef, useEffect } from 'react';
 import { synthesizeSpeech } from '@/lib/api/tts';
 import { normalize } from '@/lib/textPipeline';
@@ -14,12 +17,14 @@ export interface UseTTSReturn {
   stop: () => void;
 }
 
-/** Split text into chunks of at most maxLen characters, breaking at word boundaries. */
+/** Split text into chunks of max 4000 chars,
+ * because OpenAI has a 4096-char limit
+ */
 function splitIntoChunks(text: string, maxLen = 4000): string[] {
   const chunks: string[] = [];
   let remaining = text;
   while (remaining.length > maxLen) {
-    let splitAt = remaining.lastIndexOf(' ', maxLen);
+    let splitAt = remaining.lastIndexOf(' ', maxLen); //so it doesn't cut a word in half
     if (splitAt <= 0) splitAt = maxLen;
     chunks.push(remaining.slice(0, splitAt).trim());
     remaining = remaining.slice(splitAt).trim();
@@ -29,30 +34,30 @@ function splitIntoChunks(text: string, maxLen = 4000): string[] {
 }
 
 /**
- * Encapsulates text-to-speech playback.
+ * Encapsulates TTS playback using the backend OpenAI TTS endpoint.
  * Handles chunking, sequential playback, pause/resume/stop, and resource cleanup.
- *
- * @param text - The text to synthesize and play.
- * @param synthesize - Optional synthesize function; defaults to the OpenAI TTS backend.
- *   Pass a custom implementation to swap the TTS provider without changing this hook.
  */
-export function useTTS(
-  text: string,
-  synthesize: (text: string) => Promise<string> = synthesizeSpeech
-): UseTTSReturn {
+export function useTTS(text: string): UseTTSReturn {
+  //Initializes the state & speech 
   const [state, setState] = useState<TTSState>('idle');
   const [speechRate, setSpeechRate] = useState(1.0);
-
+  
+  //Ref to the audio
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const chunksRef = useRef<string[]>([]);
   const currentObjectUrlRef = useRef<string | null>(null);
-  // Stable ref so the async playback chain always reads the latest rate without restarting.
+  
+  /** 
+   * update the stable ref whenever speechRate changes
+  */
   const speechRateRef = useRef(speechRate);
   useEffect(() => {
     speechRateRef.current = speechRate;
   }, [speechRate]);
 
-  // Cleanup on unmount
+  /**
+   * Cleanup on unmount
+   */
   useEffect(() => {
     return () => {
       if (audioRef.current) {
@@ -64,7 +69,11 @@ export function useTTS(
       }
     };
   }, []);
+  
 
+  /**
+   * Play the next. Chunk after chunck
+   */
   const playNextChunk = async () => {
     const chunk = chunksRef.current.shift();
     if (!chunk) {
@@ -73,7 +82,7 @@ export function useTTS(
     }
 
     try {
-      const objectUrl = await synthesize(chunk);
+      const objectUrl = await synthesizeSpeech(chunk);
       currentObjectUrlRef.current = objectUrl;
 
       const audio = new Audio(objectUrl);

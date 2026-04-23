@@ -1,7 +1,6 @@
 import * as pdfjsLib from 'pdfjs-dist';
 
-const PDF_BACKEND_URL =
-  (import.meta.env.VITE_PDF_BACKEND_URL as string | undefined) ?? 'http://localhost:8000';
+const PDF_BACKEND_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? 'http://localhost:8000';
 const BACKEND_TIMEOUT_MS = 30_000;
 
 // Configure worker using the bundled worker file
@@ -18,10 +17,14 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
  * @throws On network error or non-200 response
  */
 export async function extractPdfTextViaBackend(file: File): Promise<string> {
+  
   const formData = new FormData();
   formData.append('file', file);
+  
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), BACKEND_TIMEOUT_MS);
+
+  // the network call
   try {
     const res = await fetch(`${PDF_BACKEND_URL}/extract-pdf`, {
       method: 'POST',
@@ -29,10 +32,12 @@ export async function extractPdfTextViaBackend(file: File): Promise<string> {
       signal: controller.signal,
     });
     clearTimeout(timeoutId);
+
     if (!res.ok) {
       const detail = await res.text();
       throw new Error(detail || `Backend returned ${res.status}`);
     }
+
     const json = (await res.json()) as { text?: string };
     if (typeof json.text !== 'string') {
       throw new Error('Invalid response: missing text');
@@ -43,13 +48,12 @@ export async function extractPdfTextViaBackend(file: File): Promise<string> {
   }
 }
 
+
 /**
- * Extracts text content from a PDF file. Tries the Python backend first for
- * better Arabic/RTL and ligature support; falls back to client-side pdfjs-dist
- * if the backend is unavailable.
- * @param file - The PDF file to extract text from
- * @returns Promise resolving to the extracted text
+ * The Wrapper & Fallback Logic
+ * The Fallback is Client-side pdfjs-dist 
  */
+
 export async function extractPdfText(file: File): Promise<string> {
   try {
     return await extractPdfTextViaBackend(file);
@@ -112,13 +116,7 @@ export async function extractPdfText(file: File): Promise<string> {
         /^[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06DC\u06DF-\u06E4\u06E7\u06E8\u06EA-\u06ED]+$/;
 
       // Sort lines top-to-bottom (descending y). Within each line:
-      //   1. Separate combining-only items from regular text items.
-      //   2. Sort regular items in reading order (RTL → descending x).
-      //   3. Attach each combining mark to whichever regular item's EDGE is
-      //      geometrically closest. Using both edges (item.x and item.x+width)
-      //      instead of just the origin avoids the common Arabic mis-attachment
-      //      where a tanwin drawn above the last letter of a long word is
-      //      incorrectly snapped to a nearby short standalone letter.
+      
       const sortedLines = Array.from(lineMap.entries())
         .sort(([a], [b]) => b - a)
         .map(([, lineItems]) => {

@@ -1,8 +1,10 @@
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
 /**
- * Convert text to speech using the backend OpenAI TTS endpoint.
- * Returns a blob object URL pointing to the MP3 audio.
+ * simple API client to bridge between the frontend & the backend
+ * 1) send the text, 
+ * 2) receive the raw audio bytes, 
+ * 3) and turn them into human-friendly audio for thebrowser to play.
  */
 export async function synthesizeSpeech(text: string, voice = 'alloy'): Promise<string> {
   const response = await fetch(`${API_BASE}/api/tts`, {

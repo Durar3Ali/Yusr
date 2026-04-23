@@ -1,4 +1,8 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+/**
+ * Context-Provider Pattern 
+ * Makes the preferences state globally available to the entire app
+*/
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import type { Preferences } from '@/types';
 import { useAuth } from '@/context/AuthContext';
 import { getMe } from '@/lib/api/users';
